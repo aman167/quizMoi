@@ -35,7 +35,6 @@ class AppTheme {
       surfaceContainer: AppColors.surfaceContainer,
       surfaceContainerHigh: AppColors.surfaceContainerHigh,
       surfaceContainerHighest: AppColors.surfaceContainerHighest,
-      surfaceVariant: AppColors.surfaceVariant,
       onSurfaceVariant: AppColors.onSurfaceVariant,
       outline: AppColors.outline,
       outlineVariant: AppColors.outlineVariant,

@@ -7,9 +7,24 @@ import '../widgets/ai_tutor_card.dart';
 import 'active_testing_screen.dart';
 
 class ResultsFeedbackScreen extends StatelessWidget {
-  const ResultsFeedbackScreen({Key? key}) : super(key: key);
+  const ResultsFeedbackScreen({super.key});
 
-  String _getExplanationForQuestion(int qNumber) {
+  void _showComingSoon(BuildContext context, String feature) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('$feature is planned for a later phase.')),
+    );
+  }
+
+  String _getExplanationForQuestion(QuizProvider provider, int qNumber) {
+    final generatedExplanation = provider
+        .savedQuestionForNumber(qNumber)
+        ?.explanation;
+    if (generatedExplanation != null) {
+      final excerpt = generatedExplanation.sourceExcerpt;
+      return excerpt == null || excerpt.trim().isEmpty
+          ? generatedExplanation.text
+          : '${generatedExplanation.text}\n\nSource evidence: “$excerpt”';
+    }
     switch (qNumber) {
       case 1:
         return 'The word "quotidien" relates to daily life. "Journalier" is the correct synonym meaning "daily" or "everyday".';
@@ -28,21 +43,68 @@ class ResultsFeedbackScreen extends StatelessWidget {
       builder: (context, provider, child) {
         final quiz = provider.currentQuiz;
 
-        final scorePercent = quiz?.scorePercent ?? 85.0;
-        final correctCount = quiz?.correctCount ?? 17;
-        final totalQuestions = quiz?.totalQuestions ?? 20;
-        final incorrectCount = totalQuestions - correctCount;
+        if (quiz == null) {
+          return Scaffold(
+            backgroundColor: AppColors.background,
+            appBar: AppBar(title: const Text('Results'), centerTitle: true),
+            body: const Center(
+              child: Padding(
+                padding: EdgeInsets.all(32),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.insights_outlined,
+                      size: 64,
+                      color: AppColors.onSurfaceVariant,
+                    ),
+                    SizedBox(height: 16),
+                    Text(
+                      'No quiz results yet',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'Complete a quiz and your score and feedback will appear here.',
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
+
+        final scorePercent = quiz.scorePercent;
+        final correctCount = quiz.correctCount;
+        final totalQuestions = quiz.totalQuestions;
+        final incorrectCount = quiz.incorrectCount;
         final formattedTime = provider.formattedTime;
-        final incorrectQuestions = quiz?.incorrectQuestions ?? [];
+        final incorrectQuestions = quiz.incorrectQuestions;
+        final conceptsToReview = <String, ({String name, String category})>{};
+        for (final question in incorrectQuestions) {
+          final savedQuestion = provider.savedQuestionForNumber(
+            question.number,
+          );
+          for (final concept in savedQuestion?.concepts ?? const []) {
+            conceptsToReview[concept.id] = (
+              name: concept.name,
+              category: concept.category,
+            );
+          }
+        }
 
         return Scaffold(
           backgroundColor: AppColors.background,
           appBar: AppBar(
-            backgroundColor: AppColors.surface.withOpacity(0.8),
+            backgroundColor: AppColors.surface.withValues(alpha: 0.8),
             elevation: 0,
             leading: IconButton(
               icon: const Icon(Icons.menu, color: AppColors.onSurfaceVariant),
-              onPressed: () {},
+              onPressed: () => _showComingSoon(context, 'The app menu'),
             ),
             title: const Text(
               'quizMoi',
@@ -79,21 +141,38 @@ class ResultsFeedbackScreen extends StatelessWidget {
                 // Breadcrumbs
                 Row(
                   children: [
-                    Text('Dashboard',
-                        style: TextStyle(
-                            fontSize: 11, color: AppColors.onSurfaceVariant)),
-                    const Icon(Icons.chevron_right,
-                        size: 14, color: AppColors.onSurfaceVariant),
-                    Text('Quizzes',
-                        style: TextStyle(
-                            fontSize: 11, color: AppColors.onSurfaceVariant)),
-                    const Icon(Icons.chevron_right,
-                        size: 14, color: AppColors.onSurfaceVariant),
-                    const Text('Results',
-                        style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.onSurface)),
+                    Text(
+                      'Dashboard',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppColors.onSurfaceVariant,
+                      ),
+                    ),
+                    const Icon(
+                      Icons.chevron_right,
+                      size: 14,
+                      color: AppColors.onSurfaceVariant,
+                    ),
+                    Text(
+                      'Quizzes',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppColors.onSurfaceVariant,
+                      ),
+                    ),
+                    const Icon(
+                      Icons.chevron_right,
+                      size: 14,
+                      color: AppColors.onSurfaceVariant,
+                    ),
+                    const Text(
+                      'Results',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.onSurface,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 14),
@@ -103,17 +182,14 @@ class ResultsFeedbackScreen extends StatelessWidget {
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
-                      colors: [
-                        AppColors.tertiaryContainer,
-                        AppColors.tertiary,
-                      ],
+                      colors: [AppColors.tertiaryContainer, AppColors.tertiary],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.tertiary.withOpacity(0.3),
+                        color: AppColors.tertiary.withValues(alpha: 0.3),
                         blurRadius: 12,
                         offset: const Offset(0, 4),
                       ),
@@ -127,8 +203,11 @@ class ResultsFeedbackScreen extends StatelessWidget {
                         children: [
                           Row(
                             children: const [
-                              Icon(Icons.emoji_events,
-                                  color: Colors.white, size: 28),
+                              Icon(
+                                Icons.emoji_events,
+                                color: Colors.white,
+                                size: 28,
+                              ),
                               SizedBox(width: 8),
                               Text(
                                 'Quiz Results',
@@ -142,12 +221,15 @@ class ResultsFeedbackScreen extends StatelessWidget {
                           ),
                           Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 4),
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
+                              color: Colors.white.withValues(alpha: 0.2),
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
-                                  color: Colors.white.withOpacity(0.3)),
+                                color: Colors.white.withValues(alpha: 0.3),
+                              ),
                             ),
                             child: const Text(
                               'Completed',
@@ -162,23 +244,26 @@ class ResultsFeedbackScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        quiz?.title ?? 'French Vocab: Daily Routine',
+                        quiz.title,
                         style: TextStyle(
                           fontSize: 14,
-                          color: Colors.white.withOpacity(0.9),
+                          color: Colors.white.withValues(alpha: 0.9),
                         ),
                       ),
                       const SizedBox(height: 4),
                       Row(
                         children: [
-                          Icon(Icons.schedule,
-                              size: 12, color: Colors.white.withOpacity(0.7)),
+                          Icon(
+                            Icons.schedule,
+                            size: 12,
+                            color: Colors.white.withValues(alpha: 0.7),
+                          ),
                           const SizedBox(width: 4),
                           Text(
                             'Completed just now',
                             style: TextStyle(
                               fontSize: 11,
-                              color: Colors.white.withOpacity(0.7),
+                              color: Colors.white.withValues(alpha: 0.7),
                             ),
                           ),
                         ],
@@ -188,22 +273,30 @@ class ResultsFeedbackScreen extends StatelessWidget {
                         children: [
                           Expanded(
                             child: OutlinedButton.icon(
-                              onPressed: () {},
-                              icon: const Icon(Icons.history,
-                                  size: 16, color: Colors.white),
+                              onPressed: () =>
+                                  _showComingSoon(context, 'Attempt history'),
+                              icon: const Icon(
+                                Icons.history,
+                                size: 16,
+                                color: Colors.white,
+                              ),
                               label: const Text(
                                 'All Attempts',
                                 style: TextStyle(
-                                    color: Colors.white, fontSize: 12),
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                ),
                               ),
                               style: OutlinedButton.styleFrom(
                                 side: BorderSide(
-                                    color: Colors.white.withOpacity(0.5)),
+                                  color: Colors.white.withValues(alpha: 0.5),
+                                ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(20),
                                 ),
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 8),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 8,
+                                ),
                               ),
                             ),
                           ),
@@ -211,8 +304,7 @@ class ResultsFeedbackScreen extends StatelessWidget {
                           Expanded(
                             child: ElevatedButton.icon(
                               onPressed: () {
-                                provider.resetQuiz();
-                                provider.startQuiz('retake');
+                                provider.retakeCurrentQuiz();
                                 Navigator.pushReplacement(
                                   context,
                                   MaterialPageRoute(
@@ -221,8 +313,11 @@ class ResultsFeedbackScreen extends StatelessWidget {
                                   ),
                                 );
                               },
-                              icon: const Icon(Icons.refresh,
-                                  size: 16, color: AppColors.tertiary),
+                              icon: const Icon(
+                                Icons.refresh,
+                                size: 16,
+                                color: AppColors.tertiary,
+                              ),
                               label: const Text(
                                 'Retake Quiz',
                                 style: TextStyle(
@@ -237,8 +332,9 @@ class ResultsFeedbackScreen extends StatelessWidget {
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(20),
                                 ),
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 8),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 8,
+                                ),
                               ),
                             ),
                           ),
@@ -256,11 +352,11 @@ class ResultsFeedbackScreen extends StatelessWidget {
                     color: AppColors.surfaceContainerLowest,
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: AppColors.outlineVariant.withOpacity(0.4),
+                      color: AppColors.outlineVariant.withValues(alpha: 0.4),
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.03),
+                        color: Colors.black.withValues(alpha: 0.03),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       ),
@@ -302,7 +398,9 @@ class ResultsFeedbackScreen extends StatelessWidget {
                               iconColor: AppColors.primary,
                               label: 'TIME TAKEN',
                               value: formattedTime,
-                              bgColor: AppColors.primaryFixed.withOpacity(0.3),
+                              bgColor: AppColors.primaryFixed.withValues(
+                                alpha: 0.3,
+                              ),
                             ),
                           ),
                           const SizedBox(width: 10),
@@ -312,9 +410,12 @@ class ResultsFeedbackScreen extends StatelessWidget {
                               iconColor: AppColors.successMint,
                               label: 'CORRECT',
                               value: '$correctCount',
-                              bgColor: AppColors.successMint.withOpacity(0.1),
-                              borderColor:
-                                  AppColors.successMint.withOpacity(0.3),
+                              bgColor: AppColors.successMint.withValues(
+                                alpha: 0.1,
+                              ),
+                              borderColor: AppColors.successMint.withValues(
+                                alpha: 0.3,
+                              ),
                               valueColor: AppColors.successMint,
                             ),
                           ),
@@ -329,8 +430,12 @@ class ResultsFeedbackScreen extends StatelessWidget {
                               iconColor: AppColors.error,
                               label: 'INCORRECT',
                               value: '$incorrectCount',
-                              bgColor: AppColors.errorContainer.withOpacity(0.4),
-                              borderColor: AppColors.error.withOpacity(0.3),
+                              bgColor: AppColors.errorContainer.withValues(
+                                alpha: 0.4,
+                              ),
+                              borderColor: AppColors.error.withValues(
+                                alpha: 0.3,
+                              ),
                               valueColor: AppColors.error,
                             ),
                           ),
@@ -342,7 +447,9 @@ class ResultsFeedbackScreen extends StatelessWidget {
                               label: 'AVG. TIME/Q',
                               value:
                                   '${totalQuestions > 0 ? (provider.elapsedSeconds / totalQuestions).round() : 12}s',
-                              bgColor: AppColors.secondaryFixed.withOpacity(0.4),
+                              bgColor: AppColors.secondaryFixed.withValues(
+                                alpha: 0.4,
+                              ),
                             ),
                           ),
                         ],
@@ -398,12 +505,16 @@ class ResultsFeedbackScreen extends StatelessWidget {
                                       const SizedBox(width: 6),
                                       Container(
                                         padding: const EdgeInsets.symmetric(
-                                            horizontal: 6, vertical: 2),
+                                          horizontal: 6,
+                                          vertical: 2,
+                                        ),
                                         decoration: BoxDecoration(
-                                          color:
-                                              AppColors.primary.withOpacity(0.1),
-                                          borderRadius:
-                                              BorderRadius.circular(8),
+                                          color: AppColors.primary.withValues(
+                                            alpha: 0.1,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
                                         ),
                                         child: const Text(
                                           'BETA',
@@ -437,12 +548,15 @@ class ResultsFeedbackScreen extends StatelessWidget {
                         padding: const EdgeInsets.all(16),
                         child: incorrectQuestions.isEmpty
                             ? Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 12),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
                                 child: Row(
                                   children: const [
-                                    Icon(Icons.stars,
-                                        color: AppColors.successMint),
+                                    Icon(
+                                      Icons.stars,
+                                      color: AppColors.successMint,
+                                    ),
                                     SizedBox(width: 10),
                                     Expanded(
                                       child: Text(
@@ -461,8 +575,10 @@ class ResultsFeedbackScreen extends StatelessWidget {
                                 children: incorrectQuestions.map((q) {
                                   return AiTutorCard(
                                     question: q,
-                                    explanation:
-                                        _getExplanationForQuestion(q.number),
+                                    explanation: _getExplanationForQuestion(
+                                      provider,
+                                      q.number,
+                                    ),
                                   );
                                 }).toList(),
                               ),
@@ -479,7 +595,7 @@ class ResultsFeedbackScreen extends StatelessWidget {
                     color: AppColors.surface,
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: AppColors.outlineVariant.withOpacity(0.5),
+                      color: AppColors.outlineVariant.withValues(alpha: 0.5),
                     ),
                   ),
                   child: Column(
@@ -487,8 +603,11 @@ class ResultsFeedbackScreen extends StatelessWidget {
                     children: [
                       Row(
                         children: const [
-                          Icon(Icons.menu_book,
-                              color: AppColors.secondary, size: 20),
+                          Icon(
+                            Icons.menu_book,
+                            color: AppColors.secondary,
+                            size: 20,
+                          ),
                           SizedBox(width: 8),
                           Text(
                             'Key Concepts to Review',
@@ -502,24 +621,32 @@ class ResultsFeedbackScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 14),
 
-                      // Card 1
-                      _buildConceptTile(
-                        icon: Icons.library_books,
-                        iconBg: AppColors.secondaryContainer,
-                        iconColor: AppColors.onSecondaryContainer,
-                        title: 'Reflexive Verbs (Present Tense)',
-                        subtitle: 'From Chapter 4: Daily Routines',
-                      ),
-                      const SizedBox(height: 10),
-
-                      // Card 2
-                      _buildConceptTile(
-                        icon: Icons.schedule,
-                        iconBg: AppColors.tertiaryContainer,
-                        iconColor: AppColors.onTertiaryContainer,
-                        title: 'Telling Time in French',
-                        subtitle: 'From Chapter 3: Numbers & Time',
-                      ),
+                      if (conceptsToReview.isEmpty)
+                        Text(
+                          incorrectQuestions.isEmpty
+                              ? 'No weak concepts were found in this attempt.'
+                              : 'Concept tags are not available for this quiz yet.',
+                          style: const TextStyle(
+                            color: AppColors.onSurfaceVariant,
+                          ),
+                        )
+                      else
+                        ...conceptsToReview.values.indexed.map(
+                          (entry) => Padding(
+                            padding: EdgeInsets.only(
+                              bottom: entry.$1 == conceptsToReview.length - 1
+                                  ? 0
+                                  : 10,
+                            ),
+                            child: _buildConceptTile(
+                              icon: Icons.library_books,
+                              iconBg: AppColors.secondaryContainer,
+                              iconColor: AppColors.onSecondaryContainer,
+                              title: entry.$2.name,
+                              subtitle: 'Review area: ${entry.$2.category}',
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -545,9 +672,7 @@ class ResultsFeedbackScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: borderColor ?? Colors.transparent,
-        ),
+        border: Border.all(color: borderColor ?? Colors.transparent),
       ),
       child: Column(
         children: [
@@ -625,8 +750,11 @@ class ResultsFeedbackScreen extends StatelessWidget {
               ],
             ),
           ),
-          const Icon(Icons.arrow_forward,
-              size: 16, color: AppColors.onSurfaceVariant),
+          const Icon(
+            Icons.arrow_forward,
+            size: 16,
+            color: AppColors.onSurfaceVariant,
+          ),
         ],
       ),
     );

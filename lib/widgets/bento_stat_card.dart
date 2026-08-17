@@ -11,7 +11,7 @@ class BentoStatCard extends StatelessWidget {
   final Widget? trailing;
 
   const BentoStatCard({
-    Key? key,
+    super.key,
     required this.icon,
     required this.iconColor,
     required this.label,
@@ -19,7 +19,7 @@ class BentoStatCard extends StatelessWidget {
     this.bgColor,
     this.borderColor,
     this.trailing,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -29,7 +29,7 @@ class BentoStatCard extends StatelessWidget {
         color: bgColor ?? AppColors.surfaceContainerLow,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: borderColor ?? AppColors.outlineVariant.withOpacity(0.4),
+          color: borderColor ?? AppColors.outlineVariant.withValues(alpha: 0.4),
         ),
       ),
       child: Column(
@@ -40,7 +40,7 @@ class BentoStatCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Icon(icon, color: iconColor, size: 24),
-              if (trailing != null) trailing!,
+              ?trailing,
             ],
           ),
           const SizedBox(height: 12),

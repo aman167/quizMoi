@@ -1,0 +1,115 @@
+import 'dart:io';
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as path;
+import 'package:quiz_moi_app/features/learning/data/local/quiz_database.dart';
+import 'package:quiz_moi_app/features/learning/data/repositories/sqlite_knowledge_base_repository.dart';
+import 'package:quiz_moi_app/features/learning/data/repositories/sqlite_quiz_repository.dart';
+import 'package:quiz_moi_app/features/learning/domain/entities/learning_entities.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+
+void main() {
+  late Directory temporaryDirectory;
+  late String databasePath;
+
+  setUpAll(sqfliteFfiInit);
+
+  setUp(() async {
+    temporaryDirectory = await Directory.systemTemp.createTemp(
+      'quiz-moi-migration-',
+    );
+    databasePath = path.join(temporaryDirectory.path, 'migration.sqlite');
+  });
+
+  tearDown(() async {
+    if (temporaryDirectory.existsSync()) {
+      await temporaryDirectory.delete(recursive: true);
+    }
+  });
+
+  test('upgrades version 1 without losing stored knowledge bases', () async {
+    final timestamp = DateTime.utc(2026, 8, 17, 17);
+    final versionOne = await QuizDatabase.open(
+      factory: databaseFactoryFfi,
+      databasePath: databasePath,
+      schemaVersionOverride: 1,
+    );
+    await SqliteKnowledgeBaseRepository(versionOne).save(
+      KnowledgeBaseRecord(
+        id: 'knowledge-base-1',
+        title: 'Travel Lessons',
+        sourceDocumentIds: const [],
+        isArchived: false,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      ),
+    );
+    await versionOne.connection.insert('quizzes', {
+      'id': 'legacy-quiz',
+      'knowledge_base_id': 'knowledge-base-1',
+      'title': 'Legacy Quiz',
+      'is_archived': 0,
+      'created_at': timestamp.toIso8601String(),
+      'updated_at': timestamp.toIso8601String(),
+    });
+    await versionOne.connection.insert('questions', {
+      'id': 'legacy-question',
+      'quiz_id': 'legacy-quiz',
+      'position': 0,
+      'prompt': 'Que signifie bonjour ?',
+      'question_type': 'multipleChoice',
+      'correct_answer': 'a',
+    });
+    await versionOne.connection.insert('answer_options', {
+      'question_id': 'legacy-question',
+      'id': 'a',
+      'position': 0,
+      'text': 'Hello',
+    });
+    await versionOne.connection.insert('answer_options', {
+      'question_id': 'legacy-question',
+      'id': 'b',
+      'position': 1,
+      'text': 'Goodbye',
+    });
+    await versionOne.close();
+
+    final upgraded = await QuizDatabase.open(
+      factory: databaseFactoryFfi,
+      databasePath: databasePath,
+    );
+    addTearDown(upgraded.close);
+
+    final versionRows = await upgraded.connection.rawQuery(
+      'PRAGMA user_version',
+    );
+    expect(versionRows.single['user_version'], QuizDatabase.schemaVersion);
+    final restored = await SqliteKnowledgeBaseRepository(
+      upgraded,
+    ).getById('knowledge-base-1');
+    expect(restored!.title, 'Travel Lessons');
+    final restoredQuiz = await SqliteQuizRepository(
+      upgraded,
+    ).getById('legacy-quiz');
+    expect(restoredQuiz!.title, 'Legacy Quiz');
+    expect(restoredQuiz.sourceDocumentId, isNull);
+
+    final quizColumns = await upgraded.connection.rawQuery(
+      'PRAGMA table_info(quizzes)',
+    );
+    expect(
+      quizColumns.map((column) => column['name']),
+      contains('source_document_id'),
+    );
+
+    final indexRows = await upgraded.connection.rawQuery(
+      "SELECT name FROM sqlite_master WHERE type = 'index'",
+    );
+    final indexNames = indexRows.map((row) => row['name']).toSet();
+    expect(indexNames, contains('idx_knowledge_bases_archive_updated'));
+    expect(indexNames, contains('idx_quizzes_knowledge_base'));
+    expect(indexNames, contains('idx_attempts_status_completed'));
+    expect(indexNames, contains('idx_quizzes_source_document'));
+    expect(indexNames, contains('idx_source_documents_created'));
+  });
+}

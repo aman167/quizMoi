@@ -3,9 +3,13 @@ import 'package:provider/provider.dart';
 import '../theme/app_colors.dart';
 import '../state/quiz_provider.dart';
 import 'active_testing_screen.dart';
+import '../features/learning/presentation/screens/manual_quiz_editor_screen.dart';
+import '../features/learning/domain/entities/learning_entities.dart';
+import '../features/learning/presentation/state/learner_settings_provider.dart';
+import '../features/quiz_generation/presentation/state/quiz_generation_provider.dart';
 
 class UploadContentScreen extends StatefulWidget {
-  const UploadContentScreen({Key? key}) : super(key: key);
+  const UploadContentScreen({super.key});
 
   @override
   State<UploadContentScreen> createState() => _UploadContentScreenState();
@@ -16,6 +20,116 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
   bool _optionsExpanded = false;
   final TextEditingController _textController = TextEditingController();
 
+  void _showComingSoon(String feature) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('$feature is planned for a later phase.')),
+    );
+  }
+
+  Future<void> _previewSource() async {
+    FocusScope.of(context).unfocus();
+    final generation = context.read<QuizGenerationProvider>();
+    final cefrLevel = context
+        .read<LearnerSettingsProvider>()
+        .settings
+        .cefrLevel;
+    if (!generation.prepareSource(
+      text: _textController.text,
+      cefrLevel: cefrLevel,
+    )) {
+      return;
+    }
+    final request = generation.request!;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Preview your source'),
+        content: SizedBox(
+          width: 520,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '${request.sourceText.length} characters • ${request.cefrLevel} • 10 multiple-choice questions',
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Confirm that this is the study material you want to send to the local quizMoi backend.',
+              ),
+              const SizedBox(height: 12),
+              Flexible(
+                child: Container(
+                  constraints: const BoxConstraints(maxHeight: 260),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceContainerLow,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.outlineVariant),
+                  ),
+                  child: SingleChildScrollView(child: Text(request.sourceText)),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Keep editing'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            icon: const Icon(Icons.auto_awesome),
+            label: const Text('Generate Quiz'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && mounted) {
+      await _generateAndReview();
+    }
+  }
+
+  Future<void> _generateAndReview() async {
+    final generation = context.read<QuizGenerationProvider>();
+    final generated = await generation.generate();
+    if (!generated || !mounted) return;
+
+    final result = await Navigator.push<Object?>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ManualQuizEditorScreen(
+          draftQuiz: generation.draftQuiz,
+          sourceDocument: generation.sourceDocument,
+        ),
+      ),
+    );
+    if (!mounted) return;
+    if (result == QuizEditorAction.regenerate) {
+      await _generateAndReview();
+      return;
+    }
+    if (result is QuizDefinition) {
+      generation.markSaved();
+      context.read<QuizProvider>().startSavedQuiz(result);
+      await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const ActiveTestingScreen()),
+      );
+      if (mounted) generation.reset();
+    }
+  }
+
+  void _startDemoQuiz() {
+    context.read<QuizProvider>().startQuiz('demo');
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const ActiveTestingScreen()),
+    );
+  }
+
   @override
   void dispose() {
     _textController.dispose();
@@ -24,14 +138,15 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final generation = context.watch<QuizGenerationProvider>();
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: AppColors.surface.withOpacity(0.8),
+        backgroundColor: AppColors.surface.withValues(alpha: 0.8),
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.menu, color: AppColors.onSurfaceVariant),
-          onPressed: () {},
+          onPressed: () => _showComingSoon('The app menu'),
         ),
         title: const Text(
           'quizMoi',
@@ -84,18 +199,15 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
             Text(
               'Create Quiz',
               style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    color: AppColors.onBackground,
-                    fontWeight: FontWeight.bold,
-                  ),
+                color: AppColors.onBackground,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 4),
             Text(
               'Generate AI-powered quizzes from your content',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
-                color: AppColors.onSurfaceVariant,
-              ),
+              style: TextStyle(fontSize: 14, color: AppColors.onSurfaceVariant),
             ),
             const SizedBox(height: 20),
 
@@ -106,11 +218,13 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
                 color: AppColors.surfaceContainerLow,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: AppColors.outlineVariant.withOpacity(0.3),
+                  color: AppColors.outlineVariant.withValues(alpha: 0.3),
                 ),
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
+              child: Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 4,
+                runSpacing: 4,
                 children: [
                   _buildTabButton(0, Icons.quiz, 'Quiz'),
                   _buildTabButton(1, Icons.style, 'Flashcards'),
@@ -126,11 +240,11 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
                 color: AppColors.surface,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: AppColors.outlineVariant.withOpacity(0.4),
+                  color: AppColors.outlineVariant.withValues(alpha: 0.4),
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
+                    color: Colors.black.withValues(alpha: 0.04),
                     blurRadius: 16,
                     offset: const Offset(0, 4),
                   ),
@@ -152,9 +266,11 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
                     ),
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 12),
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
                       decoration: BoxDecoration(
-                        color: AppColors.primaryFixed.withOpacity(0.3),
+                        color: AppColors.primaryFixed.withValues(alpha: 0.3),
                         borderRadius: const BorderRadius.only(
                           topLeft: Radius.circular(16),
                           topRight: Radius.circular(16),
@@ -204,55 +320,72 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
                   // Manual Creation Banner
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 10),
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
                     decoration: BoxDecoration(
-                      color: AppColors.surfaceContainerHigh.withOpacity(0.5),
+                      color: AppColors.surfaceContainerHigh.withValues(
+                        alpha: 0.5,
+                      ),
                       border: Border(
                         bottom: BorderSide(
-                          color: AppColors.outlineVariant.withOpacity(0.3),
+                          color: AppColors.outlineVariant.withValues(
+                            alpha: 0.3,
+                          ),
                         ),
                       ),
                     ),
-                    child: Row(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(
-                          Icons.edit_note,
-                          color: AppColors.tertiary,
-                          size: 20,
-                        ),
-                        const SizedBox(width: 8),
-                        const Expanded(
-                          child: Text(
-                            'Want to build your own quiz from scratch?',
-                            style: TextStyle(
-                              fontSize: 12,
+                        const Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(
+                              Icons.edit_note,
                               color: AppColors.tertiary,
+                              size: 20,
                             ),
-                          ),
-                        ),
-                        TextButton(
-                          onPressed: () {},
-                          style: TextButton.styleFrom(
-                            padding: EdgeInsets.zero,
-                            minimumSize: Size.zero,
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          ),
-                          child: Row(
-                            children: const [
-                              Text(
-                                'Create Manually',
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Want to build your own quiz from scratch?',
                                 style: TextStyle(
                                   fontSize: 12,
-                                  fontWeight: FontWeight.bold,
                                   color: AppColors.tertiary,
                                 ),
                               ),
-                              Icon(
-                                Icons.arrow_forward,
-                                size: 12,
-                                color: AppColors.tertiary,
+                            ),
+                          ],
+                        ),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton(
+                            onPressed: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    const ManualQuizEditorScreen(),
                               ),
-                            ],
+                            ),
+                            child: const Wrap(
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: [
+                                Text(
+                                  'Create Manually',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.tertiary,
+                                  ),
+                                ),
+                                Icon(
+                                  Icons.arrow_forward,
+                                  size: 12,
+                                  color: AppColors.tertiary,
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ],
@@ -273,6 +406,27 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
                             color: AppColors.onSurface,
                           ),
                         ),
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: AppColors.secondaryContainer,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Icon(Icons.science_outlined, size: 18),
+                              SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Phase 3 sends confirmed text to your local quizMoi server. Your OpenAI key stays on the computer, never in Android.',
+                                  style: TextStyle(fontSize: 12),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                         const SizedBox(height: 14),
 
                         // Text Area Input
@@ -281,14 +435,17 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
                             TextField(
                               controller: _textController,
                               maxLines: 6,
+                              textInputAction: TextInputAction.newline,
                               style: const TextStyle(fontSize: 14),
                               decoration: InputDecoration(
+                                labelText: 'French study text',
                                 hintText:
-                                    'Paste text, enter a URL, YouTube video link, type a topic, or describe what you want to quiz about... (You can also paste or upload up to 10 images)',
+                                    'Paste at least 200 characters of French or bilingual study material.',
                                 hintStyle: TextStyle(
                                   fontSize: 13,
-                                  color: AppColors.onSurfaceVariant
-                                      .withOpacity(0.6),
+                                  color: AppColors.onSurfaceVariant.withValues(
+                                    alpha: 0.6,
+                                  ),
                                 ),
                                 filled: true,
                                 fillColor: AppColors.surfaceContainerLow,
@@ -312,7 +469,11 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
                                   ),
                                 ),
                                 contentPadding: const EdgeInsets.fromLTRB(
-                                    14, 14, 14, 50),
+                                  14,
+                                  14,
+                                  14,
+                                  50,
+                                ),
                               ),
                             ),
                             Positioned(
@@ -348,40 +509,24 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
                         ),
                         const SizedBox(height: 8),
                         _buildTipItem(
-                            'Type or paste any text content (e.g., French literature excerpts)'),
+                          'Type or paste any text content (e.g., French literature excerpts)',
+                        ),
                         _buildTipItem(
-                            'Paste YouTube video URLs or web page URLs'),
-                        _buildTipItem('Upload documents or PDFs (Max 15MB)'),
+                          'PDF and web article input arrive in Phase 4',
+                        ),
                         _buildTipItem(
-                            'Enter a broad topic for AI-generated content (e.g., "Passé Composé vs Imparfait")'),
+                          'The first prototype creates 10 medium multiple-choice questions',
+                        ),
 
                         const SizedBox(height: 24),
 
                         // Generate Button
                         SizedBox(
                           width: double.infinity,
-                          child: ElevatedButton.icon(
-                            onPressed: () {
-                              final provider = Provider.of<QuizProvider>(
-                                  context,
-                                  listen: false);
-                              provider.startQuiz('custom');
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      const ActiveTestingScreen(),
-                                ),
-                              );
-                            },
-                            icon: const Text(
-                              'Generate Quiz',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            label: const Icon(Icons.auto_awesome, size: 20),
+                          child: ElevatedButton(
+                            onPressed: generation.isGenerating
+                                ? null
+                                : _previewSource,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.primary,
                               foregroundColor: AppColors.onPrimary,
@@ -391,6 +536,69 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
                                 borderRadius: BorderRadius.circular(12),
                               ),
                             ),
+                            child: Wrap(
+                              alignment: WrapAlignment.center,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              spacing: 8,
+                              children: [
+                                Text(
+                                  generation.isGenerating
+                                      ? 'Generating Quiz…'
+                                      : 'Preview & Generate',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                if (generation.isGenerating)
+                                  const SizedBox.square(
+                                    dimension: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                else
+                                  const Icon(Icons.auto_awesome, size: 20),
+                              ],
+                            ),
+                          ),
+                        ),
+                        if (generation.errorMessage != null) ...[
+                          const SizedBox(height: 12),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: AppColors.errorContainer,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Icon(Icons.error_outline),
+                                const SizedBox(width: 8),
+                                Expanded(child: Text(generation.errorMessage!)),
+                                if (generation.canRetry)
+                                  TextButton(
+                                    onPressed: generation.isGenerating
+                                        ? null
+                                        : _generateAndReview,
+                                    child: const Text('Retry'),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 10),
+                        OutlinedButton.icon(
+                          onPressed: generation.isGenerating
+                              ? null
+                              : _startDemoQuiz,
+                          icon: const Icon(Icons.play_circle_outline),
+                          label: const Text('Try Offline Demo Quiz'),
+                          style: OutlinedButton.styleFrom(
+                            minimumSize: const Size.fromHeight(48),
                           ),
                         ),
                       ],
@@ -409,6 +617,10 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
     final isActive = _selectedTab == index;
     return GestureDetector(
       onTap: () {
+        if (index != 0) {
+          _showComingSoon(label);
+          return;
+        }
         setState(() {
           _selectedTab = index;
         });
@@ -454,13 +666,13 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
         color: AppColors.surface,
         shape: BoxShape.circle,
         border: Border.all(
-          color: AppColors.outlineVariant.withOpacity(0.5),
+          color: AppColors.outlineVariant.withValues(alpha: 0.5),
         ),
       ),
       child: IconButton(
         icon: Icon(icon, size: 18, color: AppColors.onSurface),
         padding: EdgeInsets.zero,
-        onPressed: () {},
+        onPressed: () => _showComingSoon(tooltip),
         tooltip: tooltip,
       ),
     );
@@ -484,7 +696,7 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
               tipText,
               style: TextStyle(
                 fontSize: 13,
-                color: AppColors.onSurfaceVariant.withOpacity(0.8),
+                color: AppColors.onSurfaceVariant.withValues(alpha: 0.8),
               ),
             ),
           ),

@@ -7,10 +7,10 @@ class AiTutorCard extends StatelessWidget {
   final String explanation;
 
   const AiTutorCard({
-    Key? key,
+    super.key,
     required this.question,
     required this.explanation,
-  }) : super(key: key);
+  });
 
   String _getOptionText(String? optionId) {
     if (optionId == null) return 'None selected';
@@ -79,10 +79,10 @@ class AiTutorCard extends StatelessWidget {
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: AppColors.errorContainer.withOpacity(0.4),
+                  color: AppColors.errorContainer.withValues(alpha: 0.4),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: AppColors.error.withOpacity(0.3),
+                    color: AppColors.error.withValues(alpha: 0.3),
                   ),
                 ),
                 child: Column(
@@ -113,10 +113,10 @@ class AiTutorCard extends StatelessWidget {
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: AppColors.successMint.withOpacity(0.1),
+                  color: AppColors.successMint.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: AppColors.successMint.withOpacity(0.3),
+                    color: AppColors.successMint.withValues(alpha: 0.3),
                   ),
                 ),
                 child: Column(

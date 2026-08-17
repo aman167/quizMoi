@@ -8,11 +8,11 @@ class CircularScoreRing extends StatefulWidget {
   final double size;
 
   const CircularScoreRing({
-    Key? key,
+    super.key,
     required this.percentage,
     required this.color,
     this.size = 140,
-  }) : super(key: key);
+  });
 
   @override
   State<CircularScoreRing> createState() => _CircularScoreRingState();
@@ -30,9 +30,10 @@ class _CircularScoreRingState extends State<CircularScoreRing>
       vsync: this,
       duration: const Duration(milliseconds: 1200),
     );
-    _animation = Tween<double>(begin: 0, end: widget.percentage).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
-    );
+    _animation = Tween<double>(
+      begin: 0,
+      end: widget.percentage,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
     _controller.forward();
   }
 
