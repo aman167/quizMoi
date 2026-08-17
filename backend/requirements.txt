@@ -1,0 +1,9 @@
+fastapi>=0.116,<1
+openai>=1.99,<3
+pydantic>=2.11,<3
+uvicorn[standard]>=0.35,<1
+
+# Development and tests
+httpx>=0.28,<1
+pytest>=8,<9
+pytest-asyncio>=1,<2

@@ -1,335 +1,175 @@
-# quizMoi Development Roadmap
+# quizMoi Build-First Development Roadmap
 
-Audit date: 2026-08-16
+Last restructured: 2026-08-17
 
 ## Progress
 
 - [x] Phase 0 — Safe and reproducible development environment (completed 2026-08-16)
 - [x] Phase 1 — Stabilize the prototype and define behavior (completed 2026-08-17)
 - [x] Phase 2 — Build the real local learning core (completed 2026-08-17)
-- [ ] Phase 3 — Complete the testing and feedback engine
-- [ ] Phase 4 — Content ingestion
-- [ ] Phase 5 — AI generation backend
-- [ ] Phase 6 — Personalized active recall
-- [ ] Phase 7 — Account and synchronization, when needed
-- [ ] Phase 8 — Reliability, privacy, and security hardening
-- [ ] Phase 9 — Private beta readiness
-- [ ] Phase 10 — Public-release decision
+- [x] Phase 3 — Complete the AI learning prototype (completed 2026-08-17)
+- [ ] Phase 4 — Complete the Version 1 feature breadth
+- [ ] Phase 5 — Self-use alpha
+- [ ] Phase 6 — Hosted private beta
+- [ ] Phase 7 — Reliability and polish
+- [ ] Phase 8 — Conditional accounts and public-release decision
 
-Phase 0 completion evidence: the project is stored in a private GitHub repository, the Windows Flutter/Android toolchain and emulator are configured, the application runs on the Android emulator, the setup process is documented in `README.md`, the existing automated test passes, and a clean debug APK build succeeds. Physical-device coverage remains part of private-beta validation.
+Phase 0 completion evidence: the project is in a private GitHub repository, the Flutter/Android toolchain and emulator are configured, setup is documented, the app runs on Android, tests pass, and a debug APK builds.
 
-Phase 1 completion evidence: all analyzer findings have been cleared; quizzes start at zero; unanswered questions cannot advance; restart, exit, and final submission actions require confirmation; previous/next navigation preserves answers and permits corrections; missing results show an honest empty state; unfinished controls explain that they are planned; the version 1 learning loop and demo boundaries are documented; navigation and answer choices expose accessibility state; multiline keyboard input works; all main screens pass narrow-phone checks with enlarged text; 16 provider/widget tests pass; and a clean debug APK build succeeds.
+Phase 1 completion evidence: analyzer findings were cleared; quiz navigation, confirmation, accessibility, small-screen behavior, empty states, and demo boundaries were stabilized and tested.
 
-Phase 2 completion evidence: immutable, JSON-serializable learning entities cover source documents, knowledge bases, concepts, quiz definitions, explanations, attempts, answers, and learner settings. Repository interfaces separate domain code from storage, and SQLite transactionally saves, restores, updates, archive-filters, and deletes complete quiz definitions, knowledge bases, attempts, and settings. Learners can create and manage knowledge bases, assign or unfile quizzes, manually create and manage quizzes, resume interrupted sessions, complete attempts, and see real accuracy/history. CEFR level, daily goal, reminder preference, daily progress, and streak now come from local settings and attempt data instead of sample statistics. Database schema version 2 upgrades version-1 data without loss, and an end-to-end test proves that creating, closing, reopening, completing, and reopening history works across database restarts. The remaining sample quiz is explicitly isolated behind the **Try Demo Quiz** action and is not presented as stored production data.
+Phase 2 completion evidence: SQLite-backed repositories persist knowledge bases, manual quizzes, in-progress sessions, attempts, learner settings, real history, accuracy, goals, and streaks. Schema version 2 upgrades version-1 data without loss, restart behavior is covered end to end, and 48 Flutter tests pass.
 
-## Product direction
+Phase 3 completion evidence: a real Android-emulator test sent pasted French text through the local FastAPI backend and OpenAI, returned ten structured multiple-choice questions, saved the generated source and quiz, completed and scored the attempt, and reflected the result on the dashboard. Automated backend, Flutter, persistence, restart, analyzer, and debug-APK checks pass. UX and metric findings discovered during self-use remain tracked in `DEFECT_LOG.md` and do not invalidate the working source-to-feedback integration.
 
-quizMoi will remain privately distributed while it is developed into a reliable Android-first French active-recall application. The first complete product should let one learner import useful material, generate and edit a quiz, complete it, receive trustworthy feedback, and return later to review saved progress.
+## Build-first method
 
-The roadmap deliberately prioritizes a narrow working learning loop before adding every content type or platform.
+quizMoi keeps the complete Version 1 scope, but work is now ordered by usable learner journeys instead of technical layers. First create a narrow source-to-feedback loop, then broaden it, use it, host it privately, and finally harden and polish it.
 
-## Current baseline
+The first working prototype is:
 
-### What exists
+1. Paste French study text.
+2. Preview and confirm the source.
+3. Generate ten grounded multiple-choice questions through a local quizMoi backend.
+4. Review, edit, remove, reorder, or regenerate the draft.
+5. Save the source and quiz locally, optionally in a knowledge base.
+6. Complete the persistent quiz session.
+7. See grounded explanations, concepts, history, and real progress after restart.
 
-- Flutter 3.44.9 / Dart 3.12.2 project with Android, iOS, web, and Windows scaffolding.
-- A coherent Crimson Velocity Material 3 theme and reusable UI widgets.
-- Four main UI experiences: dashboard, content input, active test, and results.
-- Provider-based quiz state backed by SQLite session, history, knowledge-base, and settings repositories.
-- Automated domain, repository, provider, and widget coverage for the local learning loop.
+Cosmetic and uncommon edge-case defects may be logged for later. Secret exposure, data loss, incorrect scoring, broken tests, and an unbuildable APK are never acceptable shortcuts.
 
-### What is still prototype-only
+## Target Version 1
 
-- The explicitly labelled demo quiz and most tutor explanations remain sample content; local learner settings, Dashboard statistics, knowledge bases, manual quizzes, attempts, accuracy, and recent history are real data.
-- The entered source text is not used when `Generate Quiz` is pressed.
-- File upload, camera scan, URL ingestion, review, menu, and several buttons have no behavior.
-- Flashcards and Notes are advertised but do not have separate product flows.
-- Question models mention fill-in-the-blank and translation, but the testing UI only supports selectable options.
-- Local settings, knowledge-base, quiz, and attempt persistence and Dashboard attempt history now exist, but a full history/detail screen, accounts, backend/network clients, and AI services are not yet implemented.
+Version 1 retains:
 
-### Verification findings
+- local learner settings and progress;
+- pasted text, text-based PDF, and supported web-article sources;
+- AI-generated multiple-choice and typed-answer questions;
+- generated-question review and editing;
+- persistent sessions, attempts, feedback, knowledge bases, and history;
+- grounded explanations, weak concepts, and a daily review queue;
+- clear loading, retry, offline, and failure states;
+- a privately signed Android APK with automated checks.
 
-- `flutter test`: 48 tests pass.
-- `flutter analyze`: no issues found.
-- Android APK build: `flutter build apk --debug` succeeds.
-- SQLite migration: version 1 upgrades to version 2 without losing stored learning data.
-- Git/GitHub: private repository configured with development branches and pull requests.
-- Android still uses a prototype application ID/label, default launcher assets, and debug signing for release builds.
+Still deferred: production iOS/web/desktop support, YouTube transcription, camera ingestion, flashcards, notes, social features, subscriptions, and public-store work.
 
-## Target version 1 scope
+## Phase 3 — Complete the AI learning prototype
 
-Version 1 should include:
+### 3.1 Roadmap and service boundary
 
-1. A local learner profile and preferences.
-2. Source input from pasted text, PDF, and supported web pages.
-3. AI-generated multiple-choice and typed-answer questions.
-4. A review/edit step before a generated quiz is saved.
-5. Reliable quiz sessions with resume, answer validation, and submission safeguards.
-6. Per-answer explanations grounded in the imported source.
-7. Saved knowledge bases, quiz history, statistics, weak-concept tracking, and review sessions.
-8. Clear offline, loading, empty, retry, and failure experiences.
-9. A privately installable signed Android APK with automated quality checks.
+- Keep Phases 0–2 intact and document this build-first sequence.
+- Add a Python FastAPI service under `backend/`.
+- Provide `GET /health` and `POST /v1/quizzes/generate`.
+- Keep `OPENAI_API_KEY` and `OPENAI_MODEL` in backend environment variables only.
+- Use the OpenAI Responses API with a strict structured-output schema.
+- Default to `gpt-5.6-luna`, with the model configurable without an app rebuild.
+- Accept 200–12,000 source characters, CEFR level, difficulty, and 5–15 multiple-choice questions.
 
-Defer until the core loop is proven:
+### 3.2 Pasted-text generation
 
-- iOS, web, and desktop production support.
-- YouTube transcription, camera/image ingestion, flashcards, and generated notes.
-- Social features, leaderboards, subscriptions, and public store release.
-- GraphQL unless it solves a demonstrated need; REST is sufficient for the initial service boundary.
+- Turn the demo field into validated pasted-text input.
+- Show a required source preview before spending an AI request.
+- Preserve input across loading, timeout, unavailable-backend, invalid-output, and retry states.
+- Keep **Try Demo Quiz** as an explicit offline secondary action.
 
-## Recommended application structure
+### 3.3 Review and local save
 
-Move gradually from the current screen-centered prototype to feature-centered code:
+- Map the backend response through a provider-independent generation gateway.
+- Review and edit generated questions before saving.
+- Preserve explanations, source excerpts, and concept tags during edits.
+- Save the source, generated quiz, and optional knowledge-base relationship locally.
+- Launch the saved quiz through the existing persistent session engine.
 
-```text
-lib/
-  app/                 app bootstrap, routing, theme
-  core/                errors, networking, storage, utilities
-  features/
-    dashboard/
-    content_ingestion/
-    quiz_generation/
-    quiz_session/
-    results/
-    review/
-    profile/
-  shared/              genuinely reusable widgets
-```
+### 3.4 Grounded results
 
-Each feature should separate:
+- Render results from the completed persistent attempt.
+- Show generated explanations and source excerpts for incorrect answers.
+- Derive concept recommendations from the actual incorrect questions.
+- Refresh saved quizzes, history, dashboard progress, goals, and streaks.
 
-- presentation: screens, widgets, and UI state;
-- domain: immutable entities and use cases;
-- data: local database, API DTOs, repositories, and mappers.
+Exit criteria: pasted French text produces an editable ten-question MCQ quiz; the learner can save, complete, review, and reopen it; grounded feedback and all learning data survive restart; no secret is present in Flutter or Git.
 
-Provider can remain for now. The important change is to stop placing mock data and business rules in a single `QuizProvider`. State-management replacement is not required unless Provider becomes a real constraint.
+## Phase 4 — Complete the Version 1 feature breadth
 
-Never put an LLM provider key in the Android application. AI calls, content fetching, prompt templates, rate limits, and output validation must live behind a backend owned by quizMoi.
+### Additional sources
 
-## Delivery phases
+- Add local text-based PDF extraction, preview, validation, and safe scanned/protected/oversized errors.
+- Add backend web-article retrieval, sanitization, and unsupported/paywalled-page handling.
+- Add chunking, language checks, duplicate detection, references, and source deletion.
 
-### Phase 0 — Safe and reproducible development environment
+### Quiz types and controls
 
-Deliverables:
+- Add typed-answer authoring, generation, input, restoration, and deterministic scoring.
+- Document normalization for whitespace, capitalization, punctuation, accents, alternatives, and partial credit.
+- Add skip/review, pause/resume, optional limits, question timing, and answer history.
+- Make difficulty, count, and type controls interactive.
+- Add individual-question regeneration.
 
-- Initialize Git, make a baseline commit, and define a simple branch/commit convention.
-- Install the Android SDK, platform tools, emulator image, and required build tools.
-- Configure `sdk.dir` locally and verify `flutter doctor`.
-- Run the app on an emulator and at least one physical Android device.
-- Replace the default README with setup, run, test, and private-install instructions.
-- Add a `.env.example` or compile-time configuration pattern with no secrets committed.
+### Personalized recall
 
-Exit criteria:
-
-- A fresh checkout can be set up from the README.
-- `flutter analyze`, `flutter test`, and `flutter build apk --debug` can all run locally.
-- The prototype can be installed and opened on a real Android phone.
-
-### Phase 1 — Stabilize the prototype and define behavior
-
-Deliverables:
-
-- Resolve all analyzer warnings and current Flutter deprecations.
-- Write a short product specification for the target version 1 learning loop.
-- Hide or label deferred controls so the UI does not promise non-working features.
-- Fix timer initialization, unanswered-question handling, restart/exit confirmation, null-result behavior, and navigation consistency.
-- Add accessibility semantics, minimum tap targets, text scaling checks, keyboard behavior, and small-screen overflow checks.
-- Add dark mode only if it is part of the product specification; otherwise explicitly defer it.
-
-Tests:
-
-- Unit tests for scoring, progress, timer formatting, answer state, and completion rules.
-- Widget tests for dashboard, generation validation, quiz navigation, submission, and results.
-
-Exit criteria:
-
-- Analyzer is clean.
-- Every visible action either works or clearly communicates its unavailable state.
-- The existing demo loop behaves correctly on common Android screen sizes.
-
-### Phase 2 — Build the real local learning core
-
-Deliverables:
-
-- Replace mutable UI models with immutable, serializable domain models.
-- Define entities for source documents, knowledge bases, questions, answers, quiz attempts, explanations, concepts, and learner settings.
-- Add a local database through a repository interface.
-- Persist knowledge bases, generated quizzes, in-progress sessions, attempts, and settings.
-- Implement create, edit, duplicate, archive, and delete flows for saved quizzes.
-- Implement a manual quiz editor so the app remains useful when AI is unavailable.
-- Restore an interrupted quiz after process death or app restart.
-
-Exit criteria:
-
-- A learner can create a quiz, close the app, reopen it, complete the quiz, and see the saved attempt.
-- Domain and repository tests cover migrations and round-trip persistence.
-- No screen depends on hard-coded production data.
-
-### Phase 3 — Complete the testing and feedback engine
-
-Deliverables:
-
-- Support multiple-choice and typed-answer questions as real distinct types.
-- Define normalization rules for accents, punctuation, capitalization, accepted alternatives, and partial credit.
-- Add optional time limits, pause/resume behavior, skipped questions, answer review, and final submission confirmation.
-- Store question-level timing and answer history for useful diagnostics.
-- Generate results only from persisted attempt data.
-- Connect weak concepts and recommended review items to actual incorrect answers.
-
-Exit criteria:
-
-- All supported question types can be authored, attempted, scored, reviewed, and restored.
-- Scoring is deterministic and exhaustively unit-tested.
-- Results, history, dashboard statistics, XP, goals, and streaks all derive from real data.
-
-### Phase 4 — Content ingestion
-
-Implement one source type at a time in this order:
-
-1. Pasted text.
-2. Local PDF.
-3. Web article URL.
-
-Deliverables:
-
-- File picker, permission handling, size/type validation, and useful error messages.
-- Text extraction with page/source references retained for later grounding.
-- Server-side URL retrieval with content sanitization and unsupported/paywalled-page handling.
-- Chunking, language detection, duplicate detection, and source preview.
-- A required preview/confirm step before quiz generation.
-- Privacy controls for deleting local and server-side source data.
-
-Exit criteria:
-
-- Each supported source produces normalized text and traceable source segments.
-- Malformed, empty, oversized, scanned, protected, and unreachable inputs fail safely.
-- Source ingestion has fixture-based tests with representative French content.
-
-### Phase 5 — AI generation backend
-
-Deliverables:
-
-- Choose and document the backend, database, authentication, storage, and LLM-provider boundaries in architecture decision records.
-- Create authenticated endpoints for ingestion, generation, explanation, and job status.
-- Use versioned prompts and strict structured-output schemas.
-- Validate every generated question: correct answer exists, distractors are unique, language/level match, and source evidence is present.
-- Add background jobs, retries, cancellation, timeout handling, quotas, observability, and cost tracking.
-- Cache safe repeat work and prevent duplicate generation requests.
-- Add a generation review screen where the learner can edit or reject weak questions before saving.
-- Keep explanations grounded with source excerpts/references and disclose when confidence is low.
-
-Exit criteria:
-
-- Pasted French content can produce a validated quiz end to end without secrets in the app.
-- Invalid model output never reaches the learner as a valid quiz.
-- A small, reviewed evaluation set measures factual grounding, answer correctness, CEFR fit, ambiguity, and distractor quality.
-- Cost and latency are measured per generation request.
-
-### Phase 6 — Personalized active recall
-
-Deliverables:
-
-- Define a review scheduling algorithm and store per-concept/per-question mastery.
-- Build a daily review queue based on errors, recency, confidence, and repeated performance.
-- Calculate XP, streaks, daily goals, and average accuracy from documented rules.
-- Add concept tags and grammar/vocabulary categories.
-- Make dashboard recommendations actionable and explain why an item is recommended.
-- Add notification preferences; request notification permission only when the learner enables reminders.
-
-Exit criteria:
-
-- Completing attempts changes the next review queue predictably.
-- Statistics can be recomputed from attempt history.
-- Time-zone changes, missed days, and device clock edge cases are tested.
-
-### Phase 7 — Account and synchronization (only when needed)
-
-Start version 1 as local-first if the app is used by one private tester. Add accounts when multi-device use, backup, or a wider test group justifies them.
-
-Deliverables when activated:
-
-- Sign-in, sign-out, account deletion, token refresh, and secure credential storage.
-- Per-user authorization on every backend resource.
-- Sync conflict policy, offline queue, retry behavior, and backup/restore.
-- Data export and deletion controls.
-
-Exit criteria:
-
-- One user cannot access another user's sources, quizzes, attempts, or generated content.
-- Offline changes synchronize without silent data loss.
-- Account deletion is complete and testable.
-
-### Phase 8 — Reliability, privacy, and security hardening
-
-Deliverables:
-
-- Threat-model uploads, remote URLs, prompt injection, malicious documents, leaked secrets, and broken authorization.
-- Apply transport security, secure local secret storage, least-privilege permissions, upload limits, and server-side content validation.
-- Add crash reporting and privacy-aware structured logs with no source text or answers by default.
-- Define retention, deletion, backup, and incident-response policies.
-- Add network-loss, slow-network, backend-failure, rate-limit, and corrupted-database tests.
-- Audit third-party licenses and content-processing terms.
-
-Exit criteria:
-
-- No credentials or private study content appear in logs or source control.
-- Critical flows recover from expected failures without losing learner work.
-- Security and privacy checklist has no unresolved high-severity items.
-
-### Phase 9 — Private beta readiness
-
-Deliverables:
-
-- Final application ID, app name, launcher icon, adaptive icon, splash screen, and versioning policy.
-- Separate development/staging/production configurations and backend environments.
-- Private release signing with keys stored outside the repository and backed up securely.
-- CI checks for formatting, analysis, unit/widget tests, and Android builds.
-- Integration tests for the complete source-to-review journey.
-- Performance checks for launch, scrolling, large PDFs, generation polling, memory use, and battery use.
-- Accessibility and French-character/input testing on representative devices.
-- Produce signed APKs for a small named tester group and maintain a feedback/defect log.
-
-Exit criteria:
-
-- A signed private build installs, upgrades without data loss, and completes the version 1 learning loop on the supported Android versions/devices.
-- No open critical/high defects; medium defects have explicit decisions.
-- Backup, rollback, and tester update instructions are rehearsed.
-
-### Phase 10 — Public-release decision
-
-This is a decision gate, not the current goal. Consider store preparation only after private beta evidence shows that quiz quality, retention value, reliability, privacy, and operating cost meet agreed targets.
-
-## Suggested milestone sequence
-
-| Milestone | Phases | Outcome |
-| --- | --- | --- |
-| M0: Installable baseline | 0–1 | Clean, reproducible Android prototype |
-| M1: Useful without AI | 2–3 | Persistent manual quiz and review product |
-| M2: Source pipeline | 4 | Text/PDF/web content becomes normalized source material |
-| M3: AI learning loop | 5 | Grounded generation and explanations through a secure backend |
-| M4: Retention product | 6 | Personalized review and real learner statistics |
-| M5: Private beta | 7–9 as needed | Secure, signed, testable build for private users |
-
-## Quality gates for every feature
-
-A feature is done only when:
-
-- behavior and edge cases are written down;
-- loading, empty, error, retry, and offline states are handled where relevant;
-- business logic has unit tests and critical UI behavior has widget/integration coverage;
-- analyzer and tests pass;
-- accessibility and small-screen behavior are checked;
-- persistence and migration impact are considered;
-- privacy, security, logging, and cost impact are considered;
-- documentation is updated.
-
-## Immediate working backlog
-
-Execute these tasks next, in order:
-
-1. Begin Phase 3 with distinct typed-answer questions and documented answer-normalization rules.
-2. Add skipped-question, pause/resume, and answer-review behavior.
-3. Generate results exclusively from persisted attempt data.
-4. Connect incorrect answers to real explanations and weak-concept recommendations.
-
-The local-first Phase 2 foundation is complete; this order now expands the testing and feedback engine before later content-ingestion work.
+- Build weak-concept tracking, documented mastery rules, and a daily review queue.
+- Make recommendations actionable and explain their reason.
+- Request notification permission only after reminders are enabled.
+
+Exit criteria: text, PDF, and supported URLs work; MCQ and typed-answer quizzes can be generated and completed; review recommendations derive from real performance.
+
+## Phase 5 — Self-use alpha
+
+- Use the app on the emulator and owner’s Android phone with the backend running locally.
+- Maintain the repository's [defect and improvement log](DEFECT_LOG.md).
+- Fix crashes, data loss, broken navigation, misleading results, and unusable AI output immediately.
+- Iterate on the complete journey before expanding low-value features.
+
+## Phase 6 — Hosted private beta
+
+- Containerize FastAPI and deploy it to Google Cloud Run.
+- Store secrets in cloud secret management.
+- Use Firebase anonymous identity for per-installation access and quotas.
+- Add throttling, daily limits, cost tracking, and privacy-aware logs.
+- Separate development and private-beta configuration.
+- Finalize Android identity, icons, versioning, signing, and CI.
+- Publish signed APKs through private GitHub Releases and verify upgrades without data loss.
+
+## Phase 7 — Reliability and polish
+
+- Add safe retries, cancellation, background jobs, deduplication, caching, and offline recovery.
+- Harden URL/PDF processing, prompt-injection defenses, authorization, deletion, secrets, and database recovery.
+- Expand quiz-quality evaluation for grounding, correctness, CEFR fit, ambiguity, distractors, and explanations.
+- Complete accessibility, large-text, French-input, layout, performance, battery, and device testing.
+- Polish onboarding, design consistency, animation, empty states, errors, and navigation.
+- Resolve all critical/high defects and explicitly decide remaining medium defects.
+
+## Phase 8 — Conditional accounts and release decision
+
+- Add visible accounts, sync, backup/restore, export, conflict handling, and account deletion only when wider testing proves the need.
+- Consider Play Store preparation only after private evidence validates usefulness, reliability, privacy, quiz quality, and operating cost.
+
+## Previous-deliverable mapping
+
+| Previous phase | New location |
+| --- | --- |
+| Testing and feedback | MCQ feedback in Phase 3; typed/session breadth in Phase 4; exhaustive cases in Phase 7 |
+| Content ingestion | Pasted text in Phase 3; PDF/URL in Phase 4; hardening in Phase 7 |
+| AI backend | Local generation in Phase 3; hosting in Phase 6; jobs/evals/observability in Phase 7 |
+| Personalization | Core review queue in Phase 4; clock/failure edges in Phase 7 |
+| Accounts and sync | Conditional Phase 8 |
+| Security and reliability | Minimum online security in Phase 6; comprehensive hardening in Phase 7 |
+| Private beta | Phase 6 |
+| Public-release decision | Phase 8 |
+
+## Essential gate for every checkpoint
+
+- Format and static analysis pass.
+- Existing tests stay green and new business logic has focused tests.
+- Critical UI behavior has widget or integration coverage.
+- A debug APK builds.
+- The checkpoint happy path is manually checked on Android.
+- Secrets and private source text never enter source control or logs.
+
+## Immediate backlog
+
+1. Add the local FastAPI structured-generation boundary.
+2. Add SQLite version 3 source persistence and quiz/source linking.
+3. Build pasted-text preview, generation, review/edit, save, and launch.
+4. Replace sample feedback with persisted generated explanations and concepts.
+5. Verify the complete Phase 3 journey and save the checkpoint to GitHub.

@@ -18,11 +18,16 @@ import 'package:quiz_moi_app/features/learning/data/repositories/memory_quiz_rep
 import 'package:quiz_moi_app/features/learning/data/repositories/memory_attempt_repository.dart';
 import 'package:quiz_moi_app/features/learning/data/repositories/memory_knowledge_base_repository.dart';
 import 'package:quiz_moi_app/features/learning/data/repositories/memory_learner_settings_repository.dart';
+import 'package:quiz_moi_app/features/learning/data/repositories/memory_source_document_repository.dart';
 import 'package:quiz_moi_app/features/learning/domain/entities/learning_entities.dart';
+import 'package:quiz_moi_app/features/learning/domain/repositories/source_document_repository.dart';
 import 'package:quiz_moi_app/features/learning/presentation/state/saved_quiz_provider.dart';
 import 'package:quiz_moi_app/features/learning/presentation/state/attempt_history_provider.dart';
 import 'package:quiz_moi_app/features/learning/presentation/state/knowledge_base_provider.dart';
 import 'package:quiz_moi_app/features/learning/presentation/state/learner_settings_provider.dart';
+import 'package:quiz_moi_app/features/quiz_generation/presentation/state/quiz_generation_provider.dart';
+
+import 'support/fake_quiz_generation_gateway.dart';
 
 Widget _testApp(
   QuizProvider provider,
@@ -49,6 +54,13 @@ Widget _testApp(
       (LearnerSettingsProvider(MemoryLearnerSettingsRepository())..load());
   return MultiProvider(
     providers: [
+      Provider<SourceDocumentRepository>.value(
+        value: MemorySourceDocumentRepository(),
+      ),
+      ChangeNotifierProvider(
+        create: (_) =>
+            QuizGenerationProvider(gateway: FakeQuizGenerationGateway()),
+      ),
       ChangeNotifierProvider.value(value: provider),
       ChangeNotifierProvider.value(value: savedProvider),
       ChangeNotifierProvider.value(value: historyProvider),
@@ -337,6 +349,93 @@ void main() {
     expect(find.text('Bonjour\nComment allez-vous ?'), findsOneWidget);
     expect(tester.testTextInput.isVisible, isTrue);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Pasted text reaches generated review, save, and quiz launch', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final provider = QuizProvider();
+    await tester.pumpWidget(_testApp(provider, const UploadContentScreen()));
+    final sourceText = List.filled(
+      12,
+      'Marie prend le train chaque matin pour aller à son travail.',
+    ).join(' ');
+    await tester.enterText(find.byType(TextField), sourceText);
+    await tester.ensureVisible(find.text('Preview & Generate'));
+    await tester.tap(find.text('Preview & Generate'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Preview your source'), findsOneWidget);
+    expect(find.textContaining('10 multiple-choice questions'), findsOneWidget);
+    await tester.tap(find.text('Generate Quiz'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Review Generated Quiz'), findsOneWidget);
+    expect(find.text('Question 1'), findsOneWidget);
+    expect(find.text('Regenerate All Questions'), findsOneWidget);
+    await tester.tap(find.text('Save Quiz'));
+    await tester.pumpAndSettle();
+
+    expect(provider.currentQuiz, isNotNull);
+    expect(provider.currentQuiz!.title, 'Le trajet de Marie');
+    expect(
+      find.text('Question 1: comment Marie voyage-t-elle ?'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('Generated results use persisted explanation and concepts', (
+    WidgetTester tester,
+  ) async {
+    final now = DateTime.utc(2026, 8, 17, 20);
+    final generatedQuiz = QuizDefinition(
+      id: 'generated-quiz',
+      sourceDocumentId: 'source-1',
+      title: 'Generated travel quiz',
+      createdAt: now,
+      updatedAt: now,
+      questions: [
+        QuestionDefinition(
+          id: 'generated-question',
+          prompt: 'Comment Marie voyage-t-elle ?',
+          type: QuestionType.multipleChoice,
+          options: const [
+            AnswerOption(id: 'a', text: 'En train'),
+            AnswerOption(id: 'b', text: 'En avion'),
+          ],
+          correctAnswer: 'a',
+          explanation: const QuestionExplanation(
+            text: 'Le texte indique que Marie prend le train.',
+            sourceExcerpt: 'Marie prend le train chaque matin.',
+          ),
+          concepts: const [
+            Concept(
+              id: 'transport',
+              name: 'Les transports',
+              category: 'vocabulary',
+            ),
+          ],
+        ),
+      ],
+    );
+    final provider = QuizProvider()..startSavedQuiz(generatedQuiz);
+    provider.selectOption('b');
+    provider.nextQuestion();
+
+    await tester.pumpWidget(_testApp(provider, const ResultsFeedbackScreen()));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.textContaining('Le texte indique que Marie prend le train.'),
+      findsOneWidget,
+    );
+    expect(find.text('Les transports'), findsOneWidget);
+    expect(find.text('Review area: vocabulary'), findsOneWidget);
   });
 
   testWidgets('Main screens support narrow phones with enlarged text', (

@@ -45,6 +45,7 @@ class SqliteQuizRepository implements QuizRepository {
       final quizValues = <String, Object?>{
         'id': quiz.id,
         'knowledge_base_id': quiz.knowledgeBaseId,
+        'source_document_id': quiz.sourceDocumentId,
         'title': quiz.title,
         'is_archived': quiz.isArchived ? 1 : 0,
         'created_at': quiz.createdAt.toIso8601String(),
@@ -126,6 +127,7 @@ class SqliteQuizRepository implements QuizRepository {
     return QuizDefinition(
       id: row['id']! as String,
       knowledgeBaseId: row['knowledge_base_id'] as String?,
+      sourceDocumentId: row['source_document_id'] as String?,
       title: row['title']! as String,
       questions: questions,
       isArchived: (row['is_archived']! as int) == 1,

@@ -15,7 +15,16 @@ class ResultsFeedbackScreen extends StatelessWidget {
     );
   }
 
-  String _getExplanationForQuestion(int qNumber) {
+  String _getExplanationForQuestion(QuizProvider provider, int qNumber) {
+    final generatedExplanation = provider
+        .savedQuestionForNumber(qNumber)
+        ?.explanation;
+    if (generatedExplanation != null) {
+      final excerpt = generatedExplanation.sourceExcerpt;
+      return excerpt == null || excerpt.trim().isEmpty
+          ? generatedExplanation.text
+          : '${generatedExplanation.text}\n\nSource evidence: “$excerpt”';
+    }
     switch (qNumber) {
       case 1:
         return 'The word "quotidien" relates to daily life. "Journalier" is the correct synonym meaning "daily" or "everyday".';
@@ -75,6 +84,18 @@ class ResultsFeedbackScreen extends StatelessWidget {
         final incorrectCount = quiz.incorrectCount;
         final formattedTime = provider.formattedTime;
         final incorrectQuestions = quiz.incorrectQuestions;
+        final conceptsToReview = <String, ({String name, String category})>{};
+        for (final question in incorrectQuestions) {
+          final savedQuestion = provider.savedQuestionForNumber(
+            question.number,
+          );
+          for (final concept in savedQuestion?.concepts ?? const []) {
+            conceptsToReview[concept.id] = (
+              name: concept.name,
+              category: concept.category,
+            );
+          }
+        }
 
         return Scaffold(
           backgroundColor: AppColors.background,
@@ -555,6 +576,7 @@ class ResultsFeedbackScreen extends StatelessWidget {
                                   return AiTutorCard(
                                     question: q,
                                     explanation: _getExplanationForQuestion(
+                                      provider,
                                       q.number,
                                     ),
                                   );
@@ -599,24 +621,32 @@ class ResultsFeedbackScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 14),
 
-                      // Card 1
-                      _buildConceptTile(
-                        icon: Icons.library_books,
-                        iconBg: AppColors.secondaryContainer,
-                        iconColor: AppColors.onSecondaryContainer,
-                        title: 'Reflexive Verbs (Present Tense)',
-                        subtitle: 'From Chapter 4: Daily Routines',
-                      ),
-                      const SizedBox(height: 10),
-
-                      // Card 2
-                      _buildConceptTile(
-                        icon: Icons.schedule,
-                        iconBg: AppColors.tertiaryContainer,
-                        iconColor: AppColors.onTertiaryContainer,
-                        title: 'Telling Time in French',
-                        subtitle: 'From Chapter 3: Numbers & Time',
-                      ),
+                      if (conceptsToReview.isEmpty)
+                        Text(
+                          incorrectQuestions.isEmpty
+                              ? 'No weak concepts were found in this attempt.'
+                              : 'Concept tags are not available for this quiz yet.',
+                          style: const TextStyle(
+                            color: AppColors.onSurfaceVariant,
+                          ),
+                        )
+                      else
+                        ...conceptsToReview.values.indexed.map(
+                          (entry) => Padding(
+                            padding: EdgeInsets.only(
+                              bottom: entry.$1 == conceptsToReview.length - 1
+                                  ? 0
+                                  : 10,
+                            ),
+                            child: _buildConceptTile(
+                              icon: Icons.library_books,
+                              iconBg: AppColors.secondaryContainer,
+                              iconColor: AppColors.onSecondaryContainer,
+                              title: entry.$2.name,
+                              subtitle: 'Review area: ${entry.$2.category}',
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ),

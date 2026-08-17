@@ -3,7 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:quiz_moi_app/features/learning/data/repositories/memory_quiz_repository.dart';
 import 'package:quiz_moi_app/features/learning/data/repositories/memory_knowledge_base_repository.dart';
+import 'package:quiz_moi_app/features/learning/data/repositories/memory_source_document_repository.dart';
 import 'package:quiz_moi_app/features/learning/domain/entities/learning_entities.dart';
+import 'package:quiz_moi_app/features/learning/domain/repositories/source_document_repository.dart';
 import 'package:quiz_moi_app/features/learning/presentation/screens/manual_quiz_editor_screen.dart';
 import 'package:quiz_moi_app/features/learning/presentation/state/saved_quiz_provider.dart';
 import 'package:quiz_moi_app/features/learning/presentation/state/knowledge_base_provider.dart';
@@ -21,6 +23,9 @@ Widget _app({
       (KnowledgeBaseProvider(MemoryKnowledgeBaseRepository())..load());
   return MultiProvider(
     providers: [
+      Provider<SourceDocumentRepository>.value(
+        value: MemorySourceDocumentRepository(),
+      ),
       ChangeNotifierProvider.value(value: quizProvider),
       ChangeNotifierProvider.value(value: savedQuizProvider),
       ChangeNotifierProvider.value(value: effectiveKnowledgeBaseProvider),

@@ -1,122 +1,122 @@
 # quizMoi Version 1 Product Specification
 
-Status: Draft for private development  
+Status: Build-first private development
 Last updated: 2026-08-17
 
 ## Product promise
 
-quizMoi helps a French learner turn their own study material into active-recall practice, understand mistakes, and return to weak concepts at the right time.
+quizMoi helps a French learner turn their own study material into active-recall practice, understand mistakes, and return to weak concepts without manually creating every question.
 
-Version 1 is successful when one learner can import material, review an automatically generated quiz, complete it, understand the results, and later resume a personalized review routine without losing work.
+Version 1 succeeds when one learner can import material, review an automatically generated quiz, complete it, understand grounded results, and later resume review without losing work.
 
 ## Primary learner
 
-The first version is designed for an independent beginner-to-intermediate French learner who already has material to study but does not want to create every practice question manually.
+The first learner is the owner: an independent beginner-to-intermediate French learner who is also learning app development. Interface copy must explain actions, limitations, loading states, and errors in plain language.
 
-The interface should assume the learner may be new to both French study systems and quiz-generation tools. Actions, limitations, loading states, and errors must be explained in plain language.
+## Build-first delivery contract
+
+The product will be created in complete vertical slices and polished afterward:
+
+1. The first prototype supports pasted text and AI-generated multiple-choice quizzes.
+2. The next breadth pass adds PDF, web articles, typed answers, session controls, and personalized review.
+3. Self-use comes before hosting for other testers.
+4. Private-beta hosting, security, signing, and distribution come before comprehensive polish.
+5. Public-release work remains a later evidence-based decision.
+
+No Version 1 feature is removed by this ordering.
 
 ## Version 1 learning loop
 
-1. The learner opens quizMoi and sees saved material, current review work, and progress based on real attempts.
-2. The learner pastes text, selects a PDF, or enters a supported article URL.
-3. quizMoi extracts and previews the source so the learner can confirm what will be used.
-4. The learner chooses difficulty, question types, and question count.
-5. The backend generates structured questions grounded in the confirmed source.
-6. The learner reviews, edits, removes, or regenerates weak questions before saving the quiz.
-7. During testing, the app saves progress, prevents accidental data loss, and gives clear navigation feedback.
-8. After submission, the learner sees deterministic scoring, source-grounded explanations, and concepts to review.
-9. The completed attempt updates history, statistics, mastery, and the next review queue.
+1. Open quizMoi and see saved material, current work, and real progress.
+2. Paste text, select a PDF, or enter a supported article URL.
+3. Preview and confirm the extracted source.
+4. Choose difficulty, question types, and count.
+5. Generate validated questions through a quizMoi-controlled backend.
+6. Edit, remove, reorder, or regenerate questions before saving.
+7. Complete a persistent quiz session with clear navigation safeguards.
+8. See deterministic scoring, grounded explanations, and concepts to review.
+9. Return later to saved history and a personalized review queue.
 
-## Version 1 capabilities
+## Phase 3 prototype behavior
+
+- Pasted French or bilingual text only, between 200 and 12,000 characters.
+- Ten medium-difficulty multiple-choice questions by default.
+- Required preview and confirmation before generation.
+- Four unique options and exactly one valid correct answer per question.
+- Explanation, source excerpt, and concept tags required for every generated question.
+- Generated quiz must be reviewed before local save.
+- Source, quiz, session, attempt, and feedback survive restart.
+- **Try Demo Quiz** remains a clearly separate offline sample.
+- Entered text remains available after recoverable failures and can be retried.
+
+## Complete Version 1 capabilities
 
 ### Content
 
 - Pasted French or bilingual text
-- Text-based PDF documents
+- Text-based PDFs
 - Supported public web articles
-- Source preview and validation
-- Clear handling for empty, unsupported, oversized, protected, or unreachable content
+- Preview, validation, source references, and deletion
+- Clear empty, unsupported, oversized, protected, scanned, and unreachable states
 
 ### Quiz creation
 
-- Multiple-choice questions
-- Typed-answer and fill-in-the-blank questions
-- Difficulty and question-count controls
-- Generated-question review and editing
-- Manual quiz creation as an AI-independent fallback
+- Multiple-choice and typed-answer questions
+- Difficulty, type, and question-count controls
+- Generated-question review, editing, ordering, removal, and regeneration
+- Manual quiz creation when AI is unavailable
 
 ### Quiz sessions
 
 - Answer selection and typed input
-- Previous/next navigation
-- Required-answer and skipped-answer rules that are explicit to the learner
-- Timer, restart, exit confirmation, and session restoration
-- Final submission confirmation
+- Previous/next, skip/review, timer, pause/resume, restart, exit, and final confirmation
+- Persistent restoration after process death or restart
 
 ### Results and review
 
 - Correct, incorrect, and unanswered counts
-- Question-level explanations linked to source evidence
-- Weak-concept recommendations
-- Attempt history and saved results
-- Daily review queue and documented mastery rules
+- Question-level explanation and source evidence
+- Weak concepts and actionable recommendations
+- Attempt history, saved results, mastery, and daily review queue
 
 ### Learner data
 
-- Local-first profile and settings
-- Saved sources, quizzes, attempts, and in-progress sessions
-- Account and synchronization only when private testing demonstrates a real need
+- Local-first profile, preferences, sources, quizzes, attempts, and sessions
+- Accounts and synchronization only when private testing demonstrates a real need
 
-## Current demo-mode contract
+## Design and accessibility
 
-The local learning core is persistent, but content ingestion and AI generation remain prototypes:
+- Android-first layouts support narrow phones and enlarged text.
+- Interactive targets are at least 48 logical pixels where practical.
+- Important meaning is not communicated by color alone.
+- Controls expose labels and selected state to accessibility services.
+- French accents and common input methods work correctly.
+- Loading, empty, error, retry, offline, and unavailable states use clear language.
+- Dark mode remains deferred until after the complete learning loop.
 
-- knowledge bases, learner settings, manual quizzes, attempts, and Dashboard statistics are real local data;
-- questions and explanations reached through **Try Demo Quiz** are explicitly sample content;
-- the content field does not generate source-specific questions;
-- the primary action is labelled **Try Demo Quiz**;
-- unavailable controls must explain that they are planned instead of failing silently;
-- the Stats screen must show an empty state when no quiz exists instead of inventing results;
-- saved manual-quiz sessions must remain resumable, while restart and abandonment require confirmation.
+## Privacy and AI
 
-## Deferred beyond version 1
+- LLM credentials never enter the Android application or repository.
+- AI calls pass through a quizMoi-controlled backend.
+- Imported material and learner answers are private by default and excluded from logs.
+- Generated output is schema-validated and grounded before presentation.
+- Learners can delete imported sources and generated study data.
+
+## Deferred beyond Version 1
 
 - YouTube transcription
 - Camera and image ingestion
 - Flashcards and generated notes
 - Social features and leaderboards
 - Subscriptions and payments
-- Production support for iOS, web, and desktop
+- Production iOS, web, and desktop support
 - Public Google Play Store release
 
-These items may be reconsidered after the Android learning loop is reliable and private testers demonstrate demand.
-
-## Design and accessibility requirements
-
-- Android-first layouts must work at narrow phone widths and with enlarged text.
-- Interactive targets should be at least 48 logical pixels where practical.
-- Icons require labels or tooltips when their purpose is not obvious.
-- Selected answers and navigation tabs must expose selected state to accessibility services.
-- Important meaning cannot rely on color alone.
-- Loading, empty, error, retry, offline, and unavailable states must use clear language.
-- French accents and common input methods must display and behave correctly.
-
-Dark mode is deferred until after the complete version 1 learning loop. The current Crimson Velocity light theme remains the supported theme during private development.
-
-## Privacy and AI rules
-
-- LLM credentials must never be stored in the Android application.
-- AI requests must pass through a quizMoi-controlled backend.
-- Imported study material is private by default and must not appear in logs.
-- Generated answers must be validated before presentation.
-- Explanations should cite the source segment used when possible.
-- Learners must be able to delete imported sources and generated study data.
-
-## Version 1 completion criteria
+## Completion criteria
 
 - The complete source-to-review loop works on supported Android devices.
-- Data survives app restarts and upgrades.
-- Analyzer, automated tests, and Android builds pass in continuous integration.
-- No critical or high-severity privacy, security, data-loss, or accessibility defects remain.
-- Private testers can understand the app without developer assistance.
-- Quiz quality, latency, and operating cost meet documented targets before public-release work begins.
+- Data survives restarts and upgrades.
+- Analyzer, automated tests, and Android builds pass in CI.
+- No critical/high privacy, security, data-loss, scoring, or accessibility defects remain.
+- Private testers understand the app without developer assistance.
+- Quiz quality, latency, and operating cost meet documented targets before public-release work.

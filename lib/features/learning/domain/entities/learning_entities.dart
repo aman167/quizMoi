@@ -270,6 +270,7 @@ class QuestionDefinition {
 class QuizDefinition {
   final String id;
   final String? knowledgeBaseId;
+  final String? sourceDocumentId;
   final String title;
   final List<QuestionDefinition> questions;
   final bool isArchived;
@@ -279,6 +280,7 @@ class QuizDefinition {
   QuizDefinition({
     required this.id,
     this.knowledgeBaseId,
+    this.sourceDocumentId,
     required this.title,
     required List<QuestionDefinition> questions,
     this.isArchived = false,
@@ -296,6 +298,7 @@ class QuizDefinition {
   QuizDefinition copyWith({
     String? id,
     String? knowledgeBaseId,
+    String? sourceDocumentId,
     String? title,
     List<QuestionDefinition>? questions,
     bool? isArchived,
@@ -305,6 +308,7 @@ class QuizDefinition {
     return QuizDefinition(
       id: id ?? this.id,
       knowledgeBaseId: knowledgeBaseId ?? this.knowledgeBaseId,
+      sourceDocumentId: sourceDocumentId ?? this.sourceDocumentId,
       title: title ?? this.title,
       questions: questions ?? this.questions,
       isArchived: isArchived ?? this.isArchived,
@@ -316,6 +320,7 @@ class QuizDefinition {
   Map<String, Object?> toJson() => {
     'id': id,
     'knowledgeBaseId': knowledgeBaseId,
+    'sourceDocumentId': sourceDocumentId,
     'title': title,
     'questions': questions.map((question) => question.toJson()).toList(),
     'isArchived': isArchived,
@@ -326,6 +331,7 @@ class QuizDefinition {
   factory QuizDefinition.fromJson(Map<String, Object?> json) => QuizDefinition(
     id: json['id']! as String,
     knowledgeBaseId: json['knowledgeBaseId'] as String?,
+    sourceDocumentId: json['sourceDocumentId'] as String?,
     title: json['title']! as String,
     questions: (json['questions']! as List<Object?>)
         .cast<Map<String, Object?>>()

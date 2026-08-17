@@ -1,0 +1,1 @@
+"""quizMoi local generation backend."""

@@ -3,13 +3,23 @@ import 'package:provider/provider.dart';
 
 import '../../../../theme/app_colors.dart';
 import '../../domain/entities/learning_entities.dart';
+import '../../domain/repositories/source_document_repository.dart';
 import '../state/knowledge_base_provider.dart';
 import '../state/saved_quiz_provider.dart';
 
+enum QuizEditorAction { regenerate }
+
 class ManualQuizEditorScreen extends StatefulWidget {
   final QuizDefinition? existingQuiz;
+  final QuizDefinition? draftQuiz;
+  final SourceDocument? sourceDocument;
 
-  const ManualQuizEditorScreen({super.key, this.existingQuiz});
+  const ManualQuizEditorScreen({
+    super.key,
+    this.existingQuiz,
+    this.draftQuiz,
+    this.sourceDocument,
+  }) : assert(existingQuiz == null || draftQuiz == null);
 
   @override
   State<ManualQuizEditorScreen> createState() => _ManualQuizEditorScreenState();
@@ -23,13 +33,15 @@ class _ManualQuizEditorScreenState extends State<ManualQuizEditorScreen> {
   bool _isSaving = false;
 
   bool get _isEditing => widget.existingQuiz != null;
+  bool get _isGeneratedDraft => widget.draftQuiz != null;
+  QuizDefinition? get _initialQuiz => widget.existingQuiz ?? widget.draftQuiz;
 
   @override
   void initState() {
     super.initState();
-    _titleController = TextEditingController(text: widget.existingQuiz?.title);
-    _knowledgeBaseId = widget.existingQuiz?.knowledgeBaseId;
-    final existingQuestions = widget.existingQuiz?.questions;
+    _titleController = TextEditingController(text: _initialQuiz?.title);
+    _knowledgeBaseId = _initialQuiz?.knowledgeBaseId;
+    final existingQuestions = _initialQuiz?.questions;
     if (existingQuestions == null || existingQuestions.isEmpty) {
       _questions.add(_QuestionDraft.empty());
     } else {
@@ -57,17 +69,29 @@ class _ManualQuizEditorScreenState extends State<ManualQuizEditorScreen> {
     });
   }
 
+  void _moveQuestion(int from, int offset) {
+    final to = from + offset;
+    if (to < 0 || to >= _questions.length) return;
+    setState(() {
+      final question = _questions.removeAt(from);
+      _questions.insert(to, question);
+    });
+  }
+
   Future<void> _save() async {
     FocusScope.of(context).unfocus();
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isSaving = true);
     final savedQuizProvider = context.read<SavedQuizProvider>();
+    final sourceDocumentRepository = context.read<SourceDocumentRepository>();
+    final knowledgeBaseProvider = context.read<KnowledgeBaseProvider>();
     final now = DateTime.now();
-    final existing = widget.existingQuiz;
+    final existing = _initialQuiz;
     final quiz = QuizDefinition(
       id: existing?.id ?? savedQuizProvider.newId('quiz'),
       knowledgeBaseId: _knowledgeBaseId,
+      sourceDocumentId: widget.sourceDocument?.id ?? existing?.sourceDocumentId,
       title: _titleController.text.trim(),
       questions: _questions
           .map(
@@ -80,6 +104,39 @@ class _ManualQuizEditorScreenState extends State<ManualQuizEditorScreen> {
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
     );
+
+    final source = widget.sourceDocument;
+    if (source != null) {
+      try {
+        await sourceDocumentRepository.save(source);
+      } catch (_) {
+        if (!mounted) return;
+        setState(() => _isSaving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('The source text could not be saved.')),
+        );
+        return;
+      }
+      final knowledgeBaseId = _knowledgeBaseId;
+      if (knowledgeBaseId != null) {
+        final attached = await knowledgeBaseProvider.attachSource(
+          knowledgeBaseId,
+          source.id,
+        );
+        if (!attached) {
+          if (!mounted) return;
+          setState(() => _isSaving = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'The source could not be added to that knowledge base.',
+              ),
+            ),
+          );
+          return;
+        }
+      }
+    }
 
     final saved = await savedQuizProvider.save(quiz);
     if (!mounted) return;
@@ -114,7 +171,13 @@ class _ManualQuizEditorScreenState extends State<ManualQuizEditorScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: Text(_isEditing ? 'Edit Quiz' : 'Create Quiz Manually'),
+        title: Text(
+          _isGeneratedDraft
+              ? 'Review Generated Quiz'
+              : _isEditing
+              ? 'Edit Quiz'
+              : 'Create Quiz Manually',
+        ),
       ),
       body: Form(
         key: _formKey,
@@ -127,15 +190,22 @@ class _ManualQuizEditorScreenState extends State<ManualQuizEditorScreen> {
                 color: AppColors.secondaryContainer,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Row(
+              child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.save_outlined, size: 20),
-                  SizedBox(width: 8),
+                  Icon(
+                    _isGeneratedDraft
+                        ? Icons.fact_check_outlined
+                        : Icons.save_outlined,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'This quiz will be stored privately on this device. Add at least one question and four answer choices.',
-                      style: TextStyle(fontSize: 12),
+                      _isGeneratedDraft
+                          ? 'Check the AI questions carefully. You can edit, remove, and reorder them before saving privately on this device.'
+                          : 'This quiz will be stored privately on this device. Add at least one question and four answer choices.',
+                      style: const TextStyle(fontSize: 12),
                     ),
                   ),
                 ],
@@ -195,6 +265,10 @@ class _ManualQuizEditorScreenState extends State<ManualQuizEditorScreen> {
                   draft: draft,
                   canRemove: _questions.length > 1,
                   onRemove: () => _removeQuestion(index),
+                  canMoveUp: index > 0,
+                  canMoveDown: index < _questions.length - 1,
+                  onMoveUp: () => _moveQuestion(index, -1),
+                  onMoveDown: () => _moveQuestion(index, 1),
                 ),
               );
             }),
@@ -203,21 +277,51 @@ class _ManualQuizEditorScreenState extends State<ManualQuizEditorScreen> {
               icon: const Icon(Icons.add),
               label: const Text('Add another question'),
             ),
-            const SizedBox(height: 12),
-            FilledButton.icon(
-              onPressed: _isSaving ? null : _save,
-              icon: _isSaving
-                  ? const SizedBox.square(
-                      dimension: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.save),
-              label: Text(_isEditing ? 'Save Changes' : 'Save Quiz'),
-              style: FilledButton.styleFrom(
-                minimumSize: const Size.fromHeight(52),
-              ),
-            ),
+            const SizedBox(height: 16),
           ],
+        ),
+      ),
+      bottomNavigationBar: SafeArea(
+        child: Material(
+          color: AppColors.surface,
+          elevation: 8,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (_isGeneratedDraft) ...[
+                  OutlinedButton.icon(
+                    onPressed: _isSaving
+                        ? null
+                        : () => Navigator.pop(
+                            context,
+                            QuizEditorAction.regenerate,
+                          ),
+                    icon: const Icon(Icons.auto_fix_high),
+                    label: const Text('Regenerate All Questions'),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(46),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                ],
+                FilledButton.icon(
+                  onPressed: _isSaving ? null : _save,
+                  icon: _isSaving
+                      ? const SizedBox.square(
+                          dimension: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.save),
+                  label: Text(_isEditing ? 'Save Changes' : 'Save Quiz'),
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(52),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -234,12 +338,20 @@ class _QuestionEditorCard extends StatefulWidget {
   final _QuestionDraft draft;
   final bool canRemove;
   final VoidCallback onRemove;
+  final bool canMoveUp;
+  final bool canMoveDown;
+  final VoidCallback onMoveUp;
+  final VoidCallback onMoveDown;
 
   const _QuestionEditorCard({
     required this.number,
     required this.draft,
     required this.canRemove,
     required this.onRemove,
+    required this.canMoveUp,
+    required this.canMoveDown,
+    required this.onMoveUp,
+    required this.onMoveDown,
   });
 
   @override
@@ -268,6 +380,16 @@ class _QuestionEditorCardState extends State<_QuestionEditorCard> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
+                ),
+                IconButton(
+                  onPressed: widget.canMoveUp ? widget.onMoveUp : null,
+                  icon: const Icon(Icons.arrow_upward),
+                  tooltip: 'Move question ${widget.number} up',
+                ),
+                IconButton(
+                  onPressed: widget.canMoveDown ? widget.onMoveDown : null,
+                  icon: const Icon(Icons.arrow_downward),
+                  tooltip: 'Move question ${widget.number} down',
                 ),
                 IconButton(
                   onPressed: widget.canRemove ? widget.onRemove : null,
@@ -319,6 +441,29 @@ class _QuestionEditorCardState extends State<_QuestionEditorCard> {
                 if (value != null) widget.draft.correctOptionIndex = value;
               },
             ),
+            if (widget.draft.explanation != null) ...[
+              const SizedBox(height: 12),
+              ExpansionTile(
+                tilePadding: EdgeInsets.zero,
+                title: const Text('AI explanation and source evidence'),
+                children: [
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(widget.draft.explanation!.text),
+                  ),
+                  if (widget.draft.explanation!.sourceExcerpt != null) ...[
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Source: “${widget.draft.explanation!.sourceExcerpt}”',
+                        style: const TextStyle(fontStyle: FontStyle.italic),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ],
           ],
         ),
       ),
@@ -331,12 +476,16 @@ class _QuestionDraft {
   final TextEditingController promptController;
   final List<TextEditingController> optionControllers;
   int correctOptionIndex;
+  final QuestionExplanation? explanation;
+  final List<Concept> concepts;
 
   _QuestionDraft({
     this.id,
     required this.promptController,
     required this.optionControllers,
     required this.correctOptionIndex,
+    this.explanation,
+    this.concepts = const [],
   });
 
   factory _QuestionDraft.empty() => _QuestionDraft(
@@ -362,6 +511,8 @@ class _QuestionDraft {
       promptController: TextEditingController(text: question.prompt),
       optionControllers: options,
       correctOptionIndex: correctIndex < 0 ? 0 : correctIndex,
+      explanation: question.explanation,
+      concepts: question.concepts,
     );
   }
 
@@ -380,6 +531,8 @@ class _QuestionDraft {
           )
           .toList(),
       correctAnswer: optionIds[correctOptionIndex],
+      explanation: explanation,
+      concepts: concepts,
     );
   }
 

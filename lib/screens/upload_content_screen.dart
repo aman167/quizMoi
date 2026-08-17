@@ -4,6 +4,9 @@ import '../theme/app_colors.dart';
 import '../state/quiz_provider.dart';
 import 'active_testing_screen.dart';
 import '../features/learning/presentation/screens/manual_quiz_editor_screen.dart';
+import '../features/learning/domain/entities/learning_entities.dart';
+import '../features/learning/presentation/state/learner_settings_provider.dart';
+import '../features/quiz_generation/presentation/state/quiz_generation_provider.dart';
 
 class UploadContentScreen extends StatefulWidget {
   const UploadContentScreen({super.key});
@@ -23,6 +26,110 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
     );
   }
 
+  Future<void> _previewSource() async {
+    FocusScope.of(context).unfocus();
+    final generation = context.read<QuizGenerationProvider>();
+    final cefrLevel = context
+        .read<LearnerSettingsProvider>()
+        .settings
+        .cefrLevel;
+    if (!generation.prepareSource(
+      text: _textController.text,
+      cefrLevel: cefrLevel,
+    )) {
+      return;
+    }
+    final request = generation.request!;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Preview your source'),
+        content: SizedBox(
+          width: 520,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '${request.sourceText.length} characters • ${request.cefrLevel} • 10 multiple-choice questions',
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Confirm that this is the study material you want to send to the local quizMoi backend.',
+              ),
+              const SizedBox(height: 12),
+              Flexible(
+                child: Container(
+                  constraints: const BoxConstraints(maxHeight: 260),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceContainerLow,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.outlineVariant),
+                  ),
+                  child: SingleChildScrollView(child: Text(request.sourceText)),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Keep editing'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            icon: const Icon(Icons.auto_awesome),
+            label: const Text('Generate Quiz'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && mounted) {
+      await _generateAndReview();
+    }
+  }
+
+  Future<void> _generateAndReview() async {
+    final generation = context.read<QuizGenerationProvider>();
+    final generated = await generation.generate();
+    if (!generated || !mounted) return;
+
+    final result = await Navigator.push<Object?>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ManualQuizEditorScreen(
+          draftQuiz: generation.draftQuiz,
+          sourceDocument: generation.sourceDocument,
+        ),
+      ),
+    );
+    if (!mounted) return;
+    if (result == QuizEditorAction.regenerate) {
+      await _generateAndReview();
+      return;
+    }
+    if (result is QuizDefinition) {
+      generation.markSaved();
+      context.read<QuizProvider>().startSavedQuiz(result);
+      await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const ActiveTestingScreen()),
+      );
+      if (mounted) generation.reset();
+    }
+  }
+
+  void _startDemoQuiz() {
+    context.read<QuizProvider>().startQuiz('demo');
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const ActiveTestingScreen()),
+    );
+  }
+
   @override
   void dispose() {
     _textController.dispose();
@@ -31,6 +138,7 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final generation = context.watch<QuizGenerationProvider>();
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -312,7 +420,7 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
                               SizedBox(width: 8),
                               Expanded(
                                 child: Text(
-                                  'Demo mode uses sample questions. Your content is not uploaded or processed yet.',
+                                  'Phase 3 sends confirmed text to your local quizMoi server. Your OpenAI key stays on the computer, never in Android.',
                                   style: TextStyle(fontSize: 12),
                                 ),
                               ),
@@ -330,9 +438,9 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
                               textInputAction: TextInputAction.newline,
                               style: const TextStyle(fontSize: 14),
                               decoration: InputDecoration(
-                                labelText: 'Study content (demo only)',
+                                labelText: 'French study text',
                                 hintText:
-                                    'Paste French text, a topic, or a link. Source-specific generation will be connected in a later phase.',
+                                    'Paste at least 200 characters of French or bilingual study material.',
                                 hintStyle: TextStyle(
                                   fontSize: 13,
                                   color: AppColors.onSurfaceVariant.withValues(
@@ -404,11 +512,10 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
                           'Type or paste any text content (e.g., French literature excerpts)',
                         ),
                         _buildTipItem(
-                          'Paste YouTube video URLs or web page URLs',
+                          'PDF and web article input arrive in Phase 4',
                         ),
-                        _buildTipItem('Upload documents or PDFs (Max 15MB)'),
                         _buildTipItem(
-                          'Enter a broad topic for AI-generated content (e.g., "Passé Composé vs Imparfait")',
+                          'The first prototype creates 10 medium multiple-choice questions',
                         ),
 
                         const SizedBox(height: 24),
@@ -417,27 +524,9 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
                         SizedBox(
                           width: double.infinity,
                           child: ElevatedButton(
-                            onPressed: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                    'AI generation is not connected yet. Starting the demo quiz.',
-                                  ),
-                                ),
-                              );
-                              final provider = Provider.of<QuizProvider>(
-                                context,
-                                listen: false,
-                              );
-                              provider.startQuiz('custom');
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      const ActiveTestingScreen(),
-                                ),
-                              );
-                            },
+                            onPressed: generation.isGenerating
+                                ? null
+                                : _previewSource,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.primary,
                               foregroundColor: AppColors.onPrimary,
@@ -447,22 +536,69 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
                                 borderRadius: BorderRadius.circular(12),
                               ),
                             ),
-                            child: const Wrap(
+                            child: Wrap(
                               alignment: WrapAlignment.center,
                               crossAxisAlignment: WrapCrossAlignment.center,
                               spacing: 8,
                               children: [
                                 Text(
-                                  'Try Demo Quiz',
+                                  generation.isGenerating
+                                      ? 'Generating Quiz…'
+                                      : 'Preview & Generate',
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
-                                Icon(Icons.auto_awesome, size: 20),
+                                if (generation.isGenerating)
+                                  const SizedBox.square(
+                                    dimension: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                else
+                                  const Icon(Icons.auto_awesome, size: 20),
                               ],
                             ),
+                          ),
+                        ),
+                        if (generation.errorMessage != null) ...[
+                          const SizedBox(height: 12),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: AppColors.errorContainer,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Icon(Icons.error_outline),
+                                const SizedBox(width: 8),
+                                Expanded(child: Text(generation.errorMessage!)),
+                                if (generation.canRetry)
+                                  TextButton(
+                                    onPressed: generation.isGenerating
+                                        ? null
+                                        : _generateAndReview,
+                                    child: const Text('Retry'),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 10),
+                        OutlinedButton.icon(
+                          onPressed: generation.isGenerating
+                              ? null
+                              : _startDemoQuiz,
+                          icon: const Icon(Icons.play_circle_outline),
+                          label: const Text('Try Offline Demo Quiz'),
+                          style: OutlinedButton.styleFrom(
+                            minimumSize: const Size.fromHeight(48),
                           ),
                         ),
                       ],

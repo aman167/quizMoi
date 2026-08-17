@@ -79,6 +79,7 @@ class SavedQuizProvider extends ChangeNotifier {
     final duplicate = QuizDefinition(
       id: quizId,
       knowledgeBaseId: quiz.knowledgeBaseId,
+      sourceDocumentId: quiz.sourceDocumentId,
       title: '${quiz.title} (Copy)',
       questions: quiz.questions
           .map(

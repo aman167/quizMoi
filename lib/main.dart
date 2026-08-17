@@ -14,15 +14,21 @@ import 'features/learning/data/repositories/memory_knowledge_base_repository.dar
 import 'features/learning/data/repositories/sqlite_knowledge_base_repository.dart';
 import 'features/learning/data/repositories/memory_learner_settings_repository.dart';
 import 'features/learning/data/repositories/sqlite_learner_settings_repository.dart';
+import 'features/learning/data/repositories/memory_source_document_repository.dart';
+import 'features/learning/data/repositories/sqlite_source_document_repository.dart';
 import 'features/learning/domain/repositories/attempt_repository.dart';
 import 'features/learning/domain/repositories/knowledge_base_repository.dart';
 import 'features/learning/domain/repositories/learner_settings_repository.dart';
 import 'features/learning/domain/repositories/quiz_repository.dart';
+import 'features/learning/domain/repositories/source_document_repository.dart';
 import 'features/learning/presentation/state/saved_quiz_provider.dart';
 import 'features/learning/presentation/state/attempt_history_provider.dart';
 import 'features/learning/presentation/state/knowledge_base_provider.dart';
 import 'features/learning/presentation/state/learner_settings_provider.dart';
 import 'features/learning/presentation/screens/learner_settings_screen.dart';
+import 'features/quiz_generation/data/http_quiz_generation_gateway.dart';
+import 'features/quiz_generation/domain/quiz_generation_gateway.dart';
+import 'features/quiz_generation/presentation/state/quiz_generation_provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -33,6 +39,13 @@ Future<void> main() async {
       attemptRepository: SqliteAttemptRepository(database),
       knowledgeBaseRepository: SqliteKnowledgeBaseRepository(database),
       learnerSettingsRepository: SqliteLearnerSettingsRepository(database),
+      sourceDocumentRepository: SqliteSourceDocumentRepository(database),
+      quizGenerationGateway: HttpQuizGenerationGateway(
+        baseUrl: const String.fromEnvironment(
+          'QUIZMOI_API_BASE_URL',
+          defaultValue: 'http://10.0.2.2:8000',
+        ),
+      ),
     ),
   );
 }
@@ -42,6 +55,8 @@ class QuizMoiApp extends StatelessWidget {
   final AttemptRepository? attemptRepository;
   final KnowledgeBaseRepository? knowledgeBaseRepository;
   final LearnerSettingsRepository? learnerSettingsRepository;
+  final SourceDocumentRepository? sourceDocumentRepository;
+  final QuizGenerationGateway? quizGenerationGateway;
 
   const QuizMoiApp({
     super.key,
@@ -49,6 +64,8 @@ class QuizMoiApp extends StatelessWidget {
     this.attemptRepository,
     this.knowledgeBaseRepository,
     this.learnerSettingsRepository,
+    this.sourceDocumentRepository,
+    this.quizGenerationGateway,
   });
 
   @override
@@ -59,8 +76,20 @@ class QuizMoiApp extends StatelessWidget {
         knowledgeBaseRepository ?? MemoryKnowledgeBaseRepository();
     final effectiveLearnerSettingsRepository =
         learnerSettingsRepository ?? MemoryLearnerSettingsRepository();
+    final effectiveSourceDocumentRepository =
+        sourceDocumentRepository ?? MemorySourceDocumentRepository();
+    final effectiveQuizGenerationGateway =
+        quizGenerationGateway ??
+        HttpQuizGenerationGateway(baseUrl: 'http://10.0.2.2:8000');
     return MultiProvider(
       providers: [
+        Provider<SourceDocumentRepository>.value(
+          value: effectiveSourceDocumentRepository,
+        ),
+        ChangeNotifierProvider(
+          create: (_) =>
+              QuizGenerationProvider(gateway: effectiveQuizGenerationGateway),
+        ),
         ChangeNotifierProvider(
           create: (_) =>
               LearnerSettingsProvider(effectiveLearnerSettingsRepository)

@@ -2,7 +2,7 @@ import 'package:path/path.dart' as path;
 import 'package:sqflite/sqflite.dart' as sqflite;
 
 class QuizDatabase {
-  static const schemaVersion = 2;
+  static const schemaVersion = 3;
   static const databaseName = 'quiz_moi.sqlite';
 
   final sqflite.Database connection;
@@ -37,6 +37,10 @@ class QuizDatabase {
     sqflite.Database database,
     int version,
   ) async {
+    final sourceDocumentColumn = version >= 3 ? 'source_document_id TEXT,' : '';
+    final sourceDocumentForeignKey = version >= 3
+        ? ', FOREIGN KEY (source_document_id) REFERENCES source_documents(id) ON DELETE SET NULL'
+        : '';
     await database.execute('''
       CREATE TABLE source_documents (
         id TEXT PRIMARY KEY,
@@ -77,12 +81,14 @@ class QuizDatabase {
       CREATE TABLE quizzes (
         id TEXT PRIMARY KEY,
         knowledge_base_id TEXT,
+        $sourceDocumentColumn
         title TEXT NOT NULL,
         is_archived INTEGER NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
         FOREIGN KEY (knowledge_base_id) REFERENCES knowledge_bases(id)
           ON DELETE SET NULL
+        $sourceDocumentForeignKey
       )
     ''');
     await database.execute('''
@@ -158,6 +164,9 @@ class QuizDatabase {
     if (version >= 2) {
       await _createVersion2Indexes(database);
     }
+    if (version >= 3) {
+      await _createVersion3Indexes(database);
+    }
   }
 
   static Future<void> _upgradeSchema(
@@ -171,6 +180,13 @@ class QuizDatabase {
     }
     if (oldVersion < 2) {
       await _createVersion2Indexes(database);
+    }
+    if (oldVersion < 3) {
+      await database.execute('''
+        ALTER TABLE quizzes ADD COLUMN source_document_id TEXT
+        REFERENCES source_documents(id) ON DELETE SET NULL
+      ''');
+      await _createVersion3Indexes(database);
     }
   }
 
@@ -186,6 +202,17 @@ class QuizDatabase {
     await database.execute('''
       CREATE INDEX IF NOT EXISTS idx_attempts_status_completed
       ON quiz_attempts(status, completed_at DESC)
+    ''');
+  }
+
+  static Future<void> _createVersion3Indexes(sqflite.Database database) async {
+    await database.execute('''
+      CREATE INDEX IF NOT EXISTS idx_quizzes_source_document
+      ON quizzes(source_document_id)
+    ''');
+    await database.execute('''
+      CREATE INDEX IF NOT EXISTS idx_source_documents_created
+      ON source_documents(created_at DESC)
     ''');
   }
 }

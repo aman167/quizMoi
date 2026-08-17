@@ -31,6 +31,7 @@ class QuizProvider extends ChangeNotifier {
   bool _completionReported = false;
 
   Quiz? get currentQuiz => _currentQuiz;
+  learning.QuizDefinition? get savedQuizDefinition => _savedQuizDefinition;
   int get currentQuestionIndex => _currentQuestionIndex;
   int get elapsedSeconds => _elapsedSeconds;
   bool get quizCompleted => _quizCompleted;
@@ -40,6 +41,15 @@ class QuizProvider extends ChangeNotifier {
       _activeAttemptId != null &&
       _currentQuiz != null &&
       !_quizCompleted;
+
+  learning.QuestionDefinition? savedQuestionForNumber(int questionNumber) {
+    final savedQuiz = _savedQuizDefinition;
+    final index = questionNumber - 1;
+    if (savedQuiz == null || index < 0 || index >= savedQuiz.questions.length) {
+      return null;
+    }
+    return savedQuiz.questions[index];
+  }
 
   QuizQuestion? get currentQuestion {
     if (_currentQuiz == null ||
@@ -205,7 +215,9 @@ class QuizProvider extends ChangeNotifier {
     _currentQuiz = Quiz(
       id: savedQuiz.id,
       title: savedQuiz.title,
-      source: 'Saved manual quiz',
+      source: savedQuiz.sourceDocumentId == null
+          ? 'Saved manual quiz'
+          : 'Generated from saved study text',
       questions: savedQuiz.questions.indexed.map((entry) {
         final (index, question) = entry;
         return QuizQuestion(

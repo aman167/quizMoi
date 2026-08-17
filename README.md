@@ -6,19 +6,20 @@ The application is currently in private development. It is not published on the 
 
 ## Current status
 
-The repository currently contains a working UI prototype with:
+The repository currently contains a persistent local learning core with:
 
 - a learner dashboard;
-- a content-input screen;
+- pasted-text preview and AI-generation screens;
 - a timed multiple-choice quiz flow;
-- scoring and results screens;
-- AI tutor-style feedback components;
-- Provider-based in-memory state management;
+- scoring with source-grounded explanations and concept feedback;
+- SQLite-backed sources, knowledge bases, quizzes, sessions, attempts, and settings;
+- a Python FastAPI generation backend with a versioned structured contract;
 - Android, iOS, web, and Windows platform scaffolding.
 
-Quiz content, learner statistics, and tutor feedback are currently demo data. Persistence, real content ingestion, and the AI backend are planned in [DEVELOPMENT_ROADMAP.md](DEVELOPMENT_ROADMAP.md).
+The remaining offline demo quiz is explicitly separate from generated and saved learning data. PDF, web-article, and typed-answer breadth is scheduled in Phase 4; see [DEVELOPMENT_ROADMAP.md](DEVELOPMENT_ROADMAP.md).
 
 The intended learner experience and current demo boundaries are defined in [PRODUCT_SPEC.md](PRODUCT_SPEC.md).
+Issues found during emulator and self-use testing are tracked in [DEFECT_LOG.md](DEFECT_LOG.md).
 
 ## Development environment
 
@@ -136,6 +137,41 @@ While `flutter run` is active:
 - press `R` for a full hot restart;
 - press `q` to stop the running application.
 
+## Run the local quiz-generation backend
+
+The Android app never contains the OpenAI key. During Phase 3 it calls a FastAPI service running on this computer, and the backend keeps the key in an environment variable.
+
+Install Python 3.11 or 3.12, then create the ignored local environment:
+
+```cmd
+cd backend
+python -m venv .venv
+.venv\Scripts\activate
+python -m pip install -r requirements.txt
+```
+
+Set your key for the current Command Prompt session. Never add the real value to `.env.example`, source files, screenshots, or Git:
+
+```cmd
+set OPENAI_API_KEY=your-own-key
+set OPENAI_MODEL=gpt-5.6-luna
+```
+
+Start the backend and leave this terminal open:
+
+```cmd
+python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+```
+
+Then run Flutter in a second terminal. The Android emulator uses `http://10.0.2.2:8000` to reach port 8000 on the Windows host. Only debug Android builds allow this local HTTP connection.
+
+Run backend tests without making a real AI request:
+
+```cmd
+cd backend
+.venv\Scripts\python.exe -m pytest -q
+```
+
 ## Quality checks
 
 Resolve dependencies:
@@ -160,6 +196,12 @@ Run automated tests:
 
 ```cmd
 flutter test
+```
+
+Run backend tests:
+
+```cmd
+backend\.venv\Scripts\python.exe -m pytest -q backend\tests
 ```
 
 Static-analysis cleanup and expanded test coverage are tracked in Phase 1 of the development roadmap.
@@ -191,6 +233,7 @@ lib/
   theme/                 Crimson Velocity colors and Material theme
   widgets/               Reusable interface components
 test/                    Flutter automated tests
+backend/                 Local FastAPI quiz-generation service
 android/                 Native Android configuration
 ios/                     Native iOS configuration
 web/                     Flutter web configuration

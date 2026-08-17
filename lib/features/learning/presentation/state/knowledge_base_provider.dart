@@ -107,6 +107,27 @@ class KnowledgeBaseProvider extends ChangeNotifier {
     );
   }
 
+  Future<bool> attachSource(String knowledgeBaseId, String sourceDocumentId) {
+    final knowledgeBase = findById(knowledgeBaseId);
+    if (knowledgeBase == null) {
+      _errorMessage = 'The selected knowledge base no longer exists.';
+      notifyListeners();
+      return Future.value(false);
+    }
+    if (knowledgeBase.sourceDocumentIds.contains(sourceDocumentId)) {
+      return Future.value(true);
+    }
+    return _save(
+      knowledgeBase.copyWith(
+        sourceDocumentIds: [
+          ...knowledgeBase.sourceDocumentIds,
+          sourceDocumentId,
+        ],
+        updatedAt: _now(),
+      ),
+    );
+  }
+
   Future<bool> delete(String id) async {
     try {
       await repository.delete(id);
