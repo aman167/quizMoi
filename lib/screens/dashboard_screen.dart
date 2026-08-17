@@ -111,6 +111,49 @@ class DashboardScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 20),
 
+                    if (provider.hasResumableSession) ...[
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryFixed,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: AppColors.primaryFixedDim),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Quiz in progress',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.onPrimaryFixed,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '${provider.currentQuiz!.title} • ${provider.currentQuiz!.answeredCount} of ${provider.currentQuiz!.totalQuestions} answered',
+                              style: const TextStyle(
+                                color: AppColors.onPrimaryFixedVariant,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            FilledButton.icon(
+                              onPressed: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      const ActiveTestingScreen(),
+                                ),
+                              ),
+                              icon: const Icon(Icons.play_arrow),
+                              label: const Text('Resume Quiz'),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                    ],
+
                     // Bento Stats Grid
                     Row(
                       children: [

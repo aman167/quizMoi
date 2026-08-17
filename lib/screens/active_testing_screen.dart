@@ -13,7 +13,8 @@ class ActiveTestingScreen extends StatefulWidget {
   State<ActiveTestingScreen> createState() => _ActiveTestingScreenState();
 }
 
-class _ActiveTestingScreenState extends State<ActiveTestingScreen> {
+class _ActiveTestingScreenState extends State<ActiveTestingScreen>
+    with WidgetsBindingObserver {
   Timer? _timer;
   bool _allowPop = false;
 
@@ -45,12 +46,13 @@ class _ActiveTestingScreenState extends State<ActiveTestingScreen> {
   Future<void> _exitQuiz(QuizProvider provider) async {
     final confirmed = await _confirmAction(
       title: 'Leave this quiz?',
-      message: 'Your answers in this demo session will be cleared.',
+      message: 'Your answers in this session will be cleared.',
       confirmLabel: 'Leave quiz',
     );
     if (!confirmed || !mounted) return;
 
-    provider.resetQuiz();
+    await provider.abandonQuiz();
+    if (!mounted) return;
     setState(() => _allowPop = true);
     Navigator.pop(context);
   }
@@ -63,7 +65,7 @@ class _ActiveTestingScreenState extends State<ActiveTestingScreen> {
     );
     if (!confirmed || !mounted) return;
 
-    provider.startQuiz('restart');
+    await provider.restartCurrentQuiz();
   }
 
   Future<void> _submitQuiz(QuizProvider provider) async {
@@ -76,6 +78,8 @@ class _ActiveTestingScreenState extends State<ActiveTestingScreen> {
     if (!confirmed || !mounted) return;
 
     if (!provider.nextQuestion()) return;
+    await provider.persistSession();
+    if (!mounted) return;
     setState(() => _allowPop = true);
     Navigator.pushReplacement(
       context,
@@ -86,6 +90,7 @@ class _ActiveTestingScreenState extends State<ActiveTestingScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       final provider = Provider.of<QuizProvider>(context, listen: false);
       if (!provider.quizCompleted) {
@@ -96,8 +101,24 @@ class _ActiveTestingScreenState extends State<ActiveTestingScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _timer?.cancel();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached ||
+        state == AppLifecycleState.hidden) {
+      unawaited(
+        Provider.of<QuizProvider>(
+          context,
+          listen: false,
+        ).persistSession().catchError((_) {}),
+      );
+    }
   }
 
   @override

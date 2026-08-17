@@ -1,10 +1,20 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../models/quiz_model.dart';
 import '../models/user_stats_model.dart';
 import '../features/learning/domain/entities/learning_entities.dart'
     as learning;
+import '../features/learning/domain/repositories/attempt_repository.dart';
+import '../features/learning/domain/repositories/quiz_repository.dart';
 
 class QuizProvider extends ChangeNotifier {
+  final AttemptRepository? attemptRepository;
+  final DateTime Function() _now;
+
+  QuizProvider({this.attemptRepository, DateTime Function()? now})
+    : _now = now ?? DateTime.now;
+
   final UserStats _userStats = UserStats(
     name: 'User',
     level: 'B1 French',
@@ -46,6 +56,12 @@ class QuizProvider extends ChangeNotifier {
   int _currentQuestionIndex = 0;
   int _elapsedSeconds = 0;
   bool _quizCompleted = false;
+  learning.QuizDefinition? _savedQuizDefinition;
+  String? _activeAttemptId;
+  DateTime? _attemptStartedAt;
+  final Map<String, DateTime> _answerTimes = {};
+  Future<void> _writeQueue = Future.value();
+  int _attemptCounter = 0;
 
   UserStats get userStats => _userStats;
   List<KnowledgeBase> get knowledgeBases => _knowledgeBases;
@@ -54,6 +70,11 @@ class QuizProvider extends ChangeNotifier {
   int get elapsedSeconds => _elapsedSeconds;
   bool get quizCompleted => _quizCompleted;
   bool get canAdvance => currentQuestion?.isAnswered ?? false;
+  bool get hasResumableSession =>
+      _savedQuizDefinition != null &&
+      _activeAttemptId != null &&
+      _currentQuiz != null &&
+      !_quizCompleted;
 
   QuizQuestion? get currentQuestion {
     if (_currentQuiz == null ||
@@ -75,6 +96,7 @@ class QuizProvider extends ChangeNotifier {
   }
 
   void startQuiz(String knowledgeBaseId) {
+    _clearPersistenceState();
     final questions = [
       QuizQuestion(
         number: 1,
@@ -203,6 +225,18 @@ class QuizProvider extends ChangeNotifier {
   }
 
   void startSavedQuiz(learning.QuizDefinition savedQuiz) {
+    _loadSavedQuiz(savedQuiz);
+    final now = _now();
+    _attemptCounter++;
+    _activeAttemptId = 'attempt-${now.microsecondsSinceEpoch}-$_attemptCounter';
+    _attemptStartedAt = now;
+    _answerTimes.clear();
+    unawaited(persistSession().catchError((_) {}));
+    notifyListeners();
+  }
+
+  void _loadSavedQuiz(learning.QuizDefinition savedQuiz) {
+    _savedQuizDefinition = savedQuiz;
     _currentQuiz = Quiz(
       id: savedQuiz.id,
       title: savedQuiz.title,
@@ -223,12 +257,16 @@ class QuizProvider extends ChangeNotifier {
     _currentQuestionIndex = 0;
     _elapsedSeconds = 0;
     _quizCompleted = false;
-    notifyListeners();
   }
 
   void selectOption(String optionId) {
     if (_currentQuiz == null || _quizCompleted) return;
     _currentQuiz!.questions[_currentQuestionIndex].selectedOptionId = optionId;
+    final savedQuiz = _savedQuizDefinition;
+    if (savedQuiz != null) {
+      _answerTimes[savedQuiz.questions[_currentQuestionIndex].id] = _now();
+      unawaited(persistSession().catchError((_) {}));
+    }
     notifyListeners();
   }
 
@@ -239,6 +277,7 @@ class QuizProvider extends ChangeNotifier {
     } else {
       _quizCompleted = true;
     }
+    unawaited(persistSession().catchError((_) {}));
     notifyListeners();
     return true;
   }
@@ -247,6 +286,7 @@ class QuizProvider extends ChangeNotifier {
     if (_currentQuiz == null) return;
     if (_currentQuestionIndex > 0) {
       _currentQuestionIndex--;
+      unawaited(persistSession().catchError((_) {}));
       notifyListeners();
     }
   }
@@ -256,7 +296,128 @@ class QuizProvider extends ChangeNotifier {
     _currentQuestionIndex = 0;
     _elapsedSeconds = 0;
     _quizCompleted = false;
+    _clearPersistenceState();
     notifyListeners();
+  }
+
+  Future<void> persistSession() {
+    final repository = attemptRepository;
+    final savedQuiz = _savedQuizDefinition;
+    final attemptId = _activeAttemptId;
+    final startedAt = _attemptStartedAt;
+    if (repository == null ||
+        savedQuiz == null ||
+        attemptId == null ||
+        startedAt == null ||
+        _currentQuiz == null) {
+      return Future.value();
+    }
+
+    final now = _now();
+    final answers = <learning.QuestionAnswer>[];
+    for (final indexedQuestion in _currentQuiz!.questions.indexed) {
+      final (index, question) = indexedQuestion;
+      final selectedOptionId = question.selectedOptionId;
+      if (selectedOptionId == null) continue;
+      final questionId = savedQuiz.questions[index].id;
+      answers.add(
+        learning.QuestionAnswer(
+          questionId: questionId,
+          value: selectedOptionId,
+          answeredAt: _answerTimes[questionId] ?? now,
+        ),
+      );
+    }
+    final attempt = learning.QuizAttempt(
+      id: attemptId,
+      quizId: savedQuiz.id,
+      status: _quizCompleted
+          ? learning.AttemptStatus.completed
+          : learning.AttemptStatus.inProgress,
+      answers: answers,
+      currentQuestionIndex: _currentQuestionIndex,
+      elapsedSeconds: _elapsedSeconds,
+      startedAt: startedAt,
+      completedAt: _quizCompleted ? now : null,
+    );
+    _writeQueue = _writeQueue
+        .catchError((_) {})
+        .then((_) => repository.save(attempt));
+    return _writeQueue;
+  }
+
+  Future<bool> restoreInProgress(QuizRepository quizRepository) async {
+    final repository = attemptRepository;
+    if (repository == null) return false;
+    final attempt = await repository.getLatestInProgress();
+    if (attempt == null) return false;
+    final quiz = await quizRepository.getById(attempt.quizId);
+    if (quiz == null) {
+      await repository.delete(attempt.id);
+      return false;
+    }
+
+    _loadSavedQuiz(quiz);
+    _activeAttemptId = attempt.id;
+    _attemptStartedAt = attempt.startedAt;
+    _elapsedSeconds = attempt.elapsedSeconds;
+    _answerTimes.clear();
+    _currentQuestionIndex = attempt.currentQuestionIndex
+        .clamp(0, quiz.questions.length - 1)
+        .toInt();
+    final answersByQuestion = {
+      for (final answer in attempt.answers) answer.questionId: answer,
+    };
+    for (final indexedQuestion in quiz.questions.indexed) {
+      final (index, question) = indexedQuestion;
+      final answer = answersByQuestion[question.id];
+      if (answer == null) continue;
+      _currentQuiz!.questions[index].selectedOptionId = answer.value;
+      _answerTimes[question.id] = answer.answeredAt;
+    }
+    notifyListeners();
+    return true;
+  }
+
+  Future<void> abandonQuiz() async {
+    final attemptId = _activeAttemptId;
+    final repository = attemptRepository;
+    await _writeQueue.catchError((_) {});
+    if (attemptId != null && repository != null) {
+      await repository.delete(attemptId);
+    }
+    resetQuiz();
+  }
+
+  Future<void> restartCurrentQuiz() async {
+    final savedQuiz = _savedQuizDefinition;
+    final attemptId = _activeAttemptId;
+    final repository = attemptRepository;
+    await _writeQueue.catchError((_) {});
+    if (attemptId != null && repository != null && !_quizCompleted) {
+      await repository.delete(attemptId);
+    }
+    if (savedQuiz == null) {
+      startQuiz('restart');
+    } else {
+      startSavedQuiz(savedQuiz);
+    }
+  }
+
+  void retakeCurrentQuiz() {
+    final savedQuiz = _savedQuizDefinition;
+    if (savedQuiz == null) {
+      startQuiz('retake');
+    } else {
+      startSavedQuiz(savedQuiz);
+    }
+  }
+
+  void _clearPersistenceState() {
+    _savedQuizDefinition = null;
+    _activeAttemptId = null;
+    _attemptStartedAt = null;
+    _answerTimes.clear();
   }
 
   void incrementTimer() {

@@ -8,25 +8,41 @@ import 'screens/upload_content_screen.dart';
 import 'screens/results_feedback_screen.dart';
 import 'features/learning/data/local/quiz_database.dart';
 import 'features/learning/data/repositories/sqlite_quiz_repository.dart';
+import 'features/learning/data/repositories/sqlite_attempt_repository.dart';
+import 'features/learning/domain/repositories/attempt_repository.dart';
 import 'features/learning/domain/repositories/quiz_repository.dart';
 import 'features/learning/presentation/state/saved_quiz_provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final database = await QuizDatabase.open();
-  runApp(QuizMoiApp(quizRepository: SqliteQuizRepository(database)));
+  runApp(
+    QuizMoiApp(
+      quizRepository: SqliteQuizRepository(database),
+      attemptRepository: SqliteAttemptRepository(database),
+    ),
+  );
 }
 
 class QuizMoiApp extends StatelessWidget {
   final QuizRepository quizRepository;
+  final AttemptRepository? attemptRepository;
 
-  const QuizMoiApp({super.key, required this.quizRepository});
+  const QuizMoiApp({
+    super.key,
+    required this.quizRepository,
+    this.attemptRepository,
+  });
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => QuizProvider()),
+        ChangeNotifierProvider(
+          create: (_) =>
+              QuizProvider(attemptRepository: attemptRepository)
+                ..restoreInProgress(quizRepository),
+        ),
         ChangeNotifierProvider(
           create: (_) => SavedQuizProvider(quizRepository)..load(),
         ),

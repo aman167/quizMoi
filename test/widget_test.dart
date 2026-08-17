@@ -15,6 +15,8 @@ import 'package:quiz_moi_app/screens/results_feedback_screen.dart';
 import 'package:quiz_moi_app/screens/upload_content_screen.dart';
 import 'package:quiz_moi_app/state/quiz_provider.dart';
 import 'package:quiz_moi_app/features/learning/data/repositories/memory_quiz_repository.dart';
+import 'package:quiz_moi_app/features/learning/data/repositories/memory_attempt_repository.dart';
+import 'package:quiz_moi_app/features/learning/domain/entities/learning_entities.dart';
 import 'package:quiz_moi_app/features/learning/presentation/state/saved_quiz_provider.dart';
 
 Widget _testApp(
@@ -198,6 +200,43 @@ void main() {
     );
   });
 
+  testWidgets('App startup offers and opens a restored quiz session', (
+    WidgetTester tester,
+  ) async {
+    final timestamp = DateTime.utc(2026, 8, 17, 14);
+    final quiz = _savedQuiz(timestamp);
+    final attempt = QuizAttempt(
+      id: 'attempt-1',
+      quizId: quiz.id,
+      status: AttemptStatus.inProgress,
+      answers: [
+        QuestionAnswer(
+          questionId: 'question-1',
+          value: 'a',
+          answeredAt: timestamp.add(const Duration(seconds: 5)),
+        ),
+      ],
+      currentQuestionIndex: 1,
+      elapsedSeconds: 12,
+      startedAt: timestamp,
+    );
+    await tester.pumpWidget(
+      QuizMoiApp(
+        quizRepository: MemoryQuizRepository(initialQuizzes: [quiz]),
+        attemptRepository: MemoryAttemptRepository(initialAttempts: [attempt]),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Quiz in progress'), findsOneWidget);
+    expect(find.text('Travel French • 1 of 2 answered'), findsOneWidget);
+    await tester.tap(find.text('Resume Quiz'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Que signifie au revoir ?'), findsOneWidget);
+    expect(find.text('0m 12s'), findsOneWidget);
+  });
+
   testWidgets('Learn input accepts multiline keyboard text', (
     WidgetTester tester,
   ) async {
@@ -250,3 +289,32 @@ void main() {
     }
   });
 }
+
+QuizDefinition _savedQuiz(DateTime timestamp) => QuizDefinition(
+  id: 'quiz-1',
+  title: 'Travel French',
+  createdAt: timestamp,
+  updatedAt: timestamp,
+  questions: [
+    QuestionDefinition(
+      id: 'question-1',
+      prompt: 'Que signifie bonjour ?',
+      type: QuestionType.multipleChoice,
+      options: const [
+        AnswerOption(id: 'a', text: 'Hello'),
+        AnswerOption(id: 'b', text: 'Goodbye'),
+      ],
+      correctAnswer: 'a',
+    ),
+    QuestionDefinition(
+      id: 'question-2',
+      prompt: 'Que signifie au revoir ?',
+      type: QuestionType.multipleChoice,
+      options: const [
+        AnswerOption(id: 'a', text: 'Please'),
+        AnswerOption(id: 'b', text: 'Goodbye'),
+      ],
+      correctAnswer: 'b',
+    ),
+  ],
+);

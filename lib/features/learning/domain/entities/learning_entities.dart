@@ -346,6 +346,29 @@ class QuizAttempt {
     this.completedAt,
   }) : answers = List.unmodifiable(answers);
 
+  QuizAttempt copyWith({
+    String? id,
+    String? quizId,
+    AttemptStatus? status,
+    List<QuestionAnswer>? answers,
+    int? currentQuestionIndex,
+    int? elapsedSeconds,
+    DateTime? startedAt,
+    DateTime? completedAt,
+    bool clearCompletedAt = false,
+  }) {
+    return QuizAttempt(
+      id: id ?? this.id,
+      quizId: quizId ?? this.quizId,
+      status: status ?? this.status,
+      answers: answers ?? this.answers,
+      currentQuestionIndex: currentQuestionIndex ?? this.currentQuestionIndex,
+      elapsedSeconds: elapsedSeconds ?? this.elapsedSeconds,
+      startedAt: startedAt ?? this.startedAt,
+      completedAt: clearCompletedAt ? null : completedAt ?? this.completedAt,
+    );
+  }
+
   Map<String, Object?> toJson() => {
     'id': id,
     'quizId': quizId,

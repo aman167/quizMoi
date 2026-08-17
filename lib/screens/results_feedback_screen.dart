@@ -283,8 +283,7 @@ class ResultsFeedbackScreen extends StatelessWidget {
                           Expanded(
                             child: ElevatedButton.icon(
                               onPressed: () {
-                                provider.resetQuiz();
-                                provider.startQuiz('retake');
+                                provider.retakeCurrentQuiz();
                                 Navigator.pushReplacement(
                                   context,
                                   MaterialPageRoute(
