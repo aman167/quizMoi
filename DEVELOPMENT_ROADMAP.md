@@ -2,6 +2,22 @@
 
 Audit date: 2026-08-16
 
+## Progress
+
+- [x] Phase 0 — Safe and reproducible development environment (completed 2026-08-16)
+- [ ] Phase 1 — Stabilize the prototype and define behavior
+- [ ] Phase 2 — Build the real local learning core
+- [ ] Phase 3 — Complete the testing and feedback engine
+- [ ] Phase 4 — Content ingestion
+- [ ] Phase 5 — AI generation backend
+- [ ] Phase 6 — Personalized active recall
+- [ ] Phase 7 — Account and synchronization, when needed
+- [ ] Phase 8 — Reliability, privacy, and security hardening
+- [ ] Phase 9 — Private beta readiness
+- [ ] Phase 10 — Public-release decision
+
+Phase 0 completion evidence: the project is stored in a private GitHub repository, the Windows Flutter/Android toolchain and emulator are configured, the application runs on the Android emulator, the setup process is documented in `README.md`, the existing automated test passes, and a clean debug APK build succeeds. Physical-device coverage remains part of private-beta validation.
+
 ## Product direction
 
 quizMoi will remain privately distributed while it is developed into a reliable Android-first French active-recall application. The first complete product should let one learner import useful material, generate and edit a quiz, complete it, receive trustworthy feedback, and return later to review saved progress.
