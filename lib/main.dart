@@ -6,18 +6,31 @@ import 'widgets/mobile_bottom_nav.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/upload_content_screen.dart';
 import 'screens/results_feedback_screen.dart';
+import 'features/learning/data/local/quiz_database.dart';
+import 'features/learning/data/repositories/sqlite_quiz_repository.dart';
+import 'features/learning/domain/repositories/quiz_repository.dart';
+import 'features/learning/presentation/state/saved_quiz_provider.dart';
 
-void main() {
-  runApp(const QuizMoiApp());
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final database = await QuizDatabase.open();
+  runApp(QuizMoiApp(quizRepository: SqliteQuizRepository(database)));
 }
 
 class QuizMoiApp extends StatelessWidget {
-  const QuizMoiApp({super.key});
+  final QuizRepository quizRepository;
+
+  const QuizMoiApp({super.key, required this.quizRepository});
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => QuizProvider(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => QuizProvider()),
+        ChangeNotifierProvider(
+          create: (_) => SavedQuizProvider(quizRepository)..load(),
+        ),
+      ],
       child: MaterialApp(
         title: 'quizMoi - French Recall',
         debugShowCheckedModeBanner: false,

@@ -14,14 +14,23 @@ import 'package:quiz_moi_app/screens/dashboard_screen.dart';
 import 'package:quiz_moi_app/screens/results_feedback_screen.dart';
 import 'package:quiz_moi_app/screens/upload_content_screen.dart';
 import 'package:quiz_moi_app/state/quiz_provider.dart';
+import 'package:quiz_moi_app/features/learning/data/repositories/memory_quiz_repository.dart';
+import 'package:quiz_moi_app/features/learning/presentation/state/saved_quiz_provider.dart';
 
 Widget _testApp(
   QuizProvider provider,
   Widget home, {
   TextScaler textScaler = TextScaler.noScaling,
+  SavedQuizProvider? savedQuizProvider,
 }) {
-  return ChangeNotifierProvider.value(
-    value: provider,
+  final savedProvider =
+      savedQuizProvider ?? SavedQuizProvider(MemoryQuizRepository())
+        ..load();
+  return MultiProvider(
+    providers: [
+      ChangeNotifierProvider.value(value: provider),
+      ChangeNotifierProvider.value(value: savedProvider),
+    ],
     child: MaterialApp(
       builder: (context, child) => MediaQuery(
         data: MediaQuery.of(context).copyWith(textScaler: textScaler),
@@ -34,7 +43,7 @@ Widget _testApp(
 
 void main() {
   testWidgets('App renders quizMoi dashboard', (WidgetTester tester) async {
-    await tester.pumpWidget(const QuizMoiApp());
+    await tester.pumpWidget(QuizMoiApp(quizRepository: MemoryQuizRepository()));
     expect(find.text('quizMoi'), findsWidgets);
   });
 
@@ -174,7 +183,7 @@ void main() {
   testWidgets('Navigation and account screen explain demo state', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(const QuizMoiApp());
+    await tester.pumpWidget(QuizMoiApp(quizRepository: MemoryQuizRepository()));
 
     expect(find.bySemanticsLabel('Review tab'), findsOneWidget);
     await tester.tap(find.bySemanticsLabel('Account tab'));

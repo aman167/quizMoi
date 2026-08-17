@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../theme/app_colors.dart';
 import '../state/quiz_provider.dart';
 import 'active_testing_screen.dart';
+import '../features/learning/presentation/screens/manual_quiz_editor_screen.dart';
 
 class UploadContentScreen extends StatefulWidget {
   const UploadContentScreen({super.key});
@@ -252,8 +253,13 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
                         Align(
                           alignment: Alignment.centerRight,
                           child: TextButton(
-                            onPressed: () =>
-                                _showComingSoon('Manual quiz creation'),
+                            onPressed: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    const ManualQuizEditorScreen(),
+                              ),
+                            ),
                             child: const Wrap(
                               crossAxisAlignment: WrapCrossAlignment.center,
                               children: [

@@ -6,6 +6,7 @@ import '../widgets/bento_stat_card.dart';
 import '../widgets/knowledge_base_card.dart';
 import 'upload_content_screen.dart';
 import 'active_testing_screen.dart';
+import '../features/learning/presentation/widgets/saved_quiz_library.dart';
 
 class DashboardScreen extends StatelessWidget {
   final Function(int)? onNavigateTab;
@@ -227,6 +228,9 @@ class DashboardScreen extends StatelessWidget {
                         ],
                       ),
                     ),
+                    const SizedBox(height: 24),
+
+                    const SavedQuizLibrary(),
                     const SizedBox(height: 24),
 
                     // Section Title

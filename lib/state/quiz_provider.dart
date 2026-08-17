@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/quiz_model.dart';
 import '../models/user_stats_model.dart';
+import '../features/learning/domain/entities/learning_entities.dart'
+    as learning;
 
 class QuizProvider extends ChangeNotifier {
   final UserStats _userStats = UserStats(
@@ -194,6 +196,30 @@ class QuizProvider extends ChangeNotifier {
       questions: questions,
     );
 
+    _currentQuestionIndex = 0;
+    _elapsedSeconds = 0;
+    _quizCompleted = false;
+    notifyListeners();
+  }
+
+  void startSavedQuiz(learning.QuizDefinition savedQuiz) {
+    _currentQuiz = Quiz(
+      id: savedQuiz.id,
+      title: savedQuiz.title,
+      source: 'Saved manual quiz',
+      questions: savedQuiz.questions.indexed.map((entry) {
+        final (index, question) = entry;
+        return QuizQuestion(
+          number: index + 1,
+          prompt: question.prompt,
+          options: question.options
+              .map((option) => QuizOption(id: option.id, text: option.text))
+              .toList(),
+          correctOptionId: question.correctAnswer,
+          type: question.type.name,
+        );
+      }).toList(),
+    );
     _currentQuestionIndex = 0;
     _elapsedSeconds = 0;
     _quizCompleted = false;
