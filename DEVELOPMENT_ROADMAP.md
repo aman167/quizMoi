@@ -20,6 +20,8 @@ Phase 0 completion evidence: the project is stored in a private GitHub repositor
 
 Phase 1 completion evidence: all analyzer findings have been cleared; quizzes start at zero; unanswered questions cannot advance; restart, exit, and final submission actions require confirmation; previous/next navigation preserves answers and permits corrections; missing results show an honest empty state; unfinished controls explain that they are planned; the version 1 learning loop and demo boundaries are documented; navigation and answer choices expose accessibility state; multiline keyboard input works; all main screens pass narrow-phone checks with enlarged text; 16 provider/widget tests pass; and a clean debug APK build succeeds.
 
+Phase 2 progress: immutable, JSON-serializable learning entities now cover source documents, knowledge bases, concepts, quiz definitions, explanations, attempts, answers, and learner settings. A repository interface separates domain code from storage, and the first SQLite implementation can transactionally save, restore, update, archive-filter, and delete complete quiz definitions. The database schema also reserves normalized tables for sources, knowledge bases, concepts, attempts, answers, and settings. Screen integration, manual quiz authoring, attempt persistence, and interrupted-session restoration remain in progress.
+
 ## Product direction
 
 quizMoi will remain privately distributed while it is developed into a reliable Android-first French active-recall application. The first complete product should let one learner import useful material, generate and edit a quiz, complete it, receive trustworthy feedback, and return later to review saved progress.
