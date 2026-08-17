@@ -51,7 +51,7 @@ class _MainNavigationContainerState extends State<MainNavigationContainer> {
         },
       ), // Tab 1: Review (Dashboard)
       const ResultsFeedbackScreen(), // Tab 2: Stats / Results
-      const PlaceholderAccountScreen(), // Tab 3: Account
+      const AccountScreen(), // Tab 3: Account
     ];
 
     return Scaffold(
@@ -68,8 +68,8 @@ class _MainNavigationContainerState extends State<MainNavigationContainer> {
   }
 }
 
-class PlaceholderAccountScreen extends StatelessWidget {
-  const PlaceholderAccountScreen({super.key});
+class AccountScreen extends StatelessWidget {
+  const AccountScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -79,18 +79,26 @@ class PlaceholderAccountScreen extends StatelessWidget {
         centerTitle: true,
       ),
       body: const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.account_circle, size: 64, color: Colors.grey),
-            SizedBox(height: 16),
-            Text(
-              'Salut, User!',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: 8),
-            Text('Level B1 French • 1,240 XP'),
-          ],
+        child: Padding(
+          padding: EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.account_circle, size: 64, color: Colors.grey),
+              SizedBox(height: 16),
+              Text(
+                'Account features are coming later',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 8),
+              Text(
+                'quizMoi currently runs in local demo mode, so no account is required.',
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
         ),
       ),
     );

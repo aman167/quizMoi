@@ -75,4 +75,40 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets('Quiz controls fit a narrow Android screen', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 700);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final provider = QuizProvider()..startQuiz('test');
+    await tester.pumpWidget(_testApp(provider, const ActiveTestingScreen()));
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('0 of 10 answered'), findsOneWidget);
+    expect(find.text('Previous'), findsOneWidget);
+    expect(find.text('Next'), findsOneWidget);
+  });
+
+  testWidgets('Navigation and account screen explain demo state', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(const QuizMoiApp());
+
+    expect(find.bySemanticsLabel('Review tab'), findsOneWidget);
+    await tester.tap(find.bySemanticsLabel('Account tab'));
+    await tester.pump();
+
+    expect(find.text('Account features are coming later'), findsOneWidget);
+    expect(
+      find.text(
+        'quizMoi currently runs in local demo mode, so no account is required.',
+      ),
+      findsOneWidget,
+    );
+  });
 }

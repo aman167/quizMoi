@@ -351,9 +351,11 @@ class _ActiveTestingScreenState extends State<ActiveTestingScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
+                                Wrap(
+                                  alignment: WrapAlignment.spaceBetween,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  spacing: 12,
+                                  runSpacing: 8,
                                   children: [
                                     Row(
                                       children: [
@@ -445,32 +447,9 @@ class _ActiveTestingScreenState extends State<ActiveTestingScreen> {
                         top: BorderSide(color: AppColors.outlineVariant),
                       ),
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        // Previous Button
-                        OutlinedButton.icon(
-                          onPressed: provider.currentQuestionIndex > 0
-                              ? () {
-                                  provider.previousQuestion();
-                                }
-                              : null,
-                          icon: const Icon(Icons.arrow_back, size: 16),
-                          label: const Text('Previous'),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: AppColors.onSurfaceVariant,
-                            side: BorderSide(color: AppColors.outlineVariant),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 10,
-                            ),
-                          ),
-                        ),
-
-                        // Answered Badge
                         Text(
                           '${quiz.answeredCount} of ${quiz.totalQuestions} answered',
                           style: TextStyle(
@@ -478,38 +457,63 @@ class _ActiveTestingScreenState extends State<ActiveTestingScreen> {
                             color: AppColors.onSurfaceVariant,
                           ),
                         ),
-
-                        // Next / Submit Button
-                        ElevatedButton.icon(
-                          onPressed: provider.canAdvance
-                              ? () {
-                                  if (!provider.nextQuestion()) return;
-                                  if (isLastQuestion) {
-                                    setState(() => _allowPop = true);
-                                    Navigator.pushReplacement(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) =>
-                                            const ResultsFeedbackScreen(),
-                                      ),
-                                    );
-                                  }
-                                }
-                              : null,
-                          icon: Text(isLastQuestion ? 'Submit' : 'Next'),
-                          label: const Icon(Icons.arrow_forward, size: 16),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            foregroundColor: AppColors.onPrimary,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: provider.currentQuestionIndex > 0
+                                    ? provider.previousQuestion
+                                    : null,
+                                icon: const Icon(Icons.arrow_back, size: 16),
+                                label: const Text('Previous'),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: AppColors.onSurfaceVariant,
+                                  side: BorderSide(
+                                    color: AppColors.outlineVariant,
+                                  ),
+                                  minimumSize: const Size.fromHeight(48),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                ),
+                              ),
                             ),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 20,
-                              vertical: 10,
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: provider.canAdvance
+                                    ? () {
+                                        if (!provider.nextQuestion()) return;
+                                        if (isLastQuestion) {
+                                          setState(() => _allowPop = true);
+                                          Navigator.pushReplacement(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) =>
+                                                  const ResultsFeedbackScreen(),
+                                            ),
+                                          );
+                                        }
+                                      }
+                                    : null,
+                                icon: Text(isLastQuestion ? 'Submit' : 'Next'),
+                                label: const Icon(
+                                  Icons.arrow_forward,
+                                  size: 16,
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.primary,
+                                  foregroundColor: AppColors.onPrimary,
+                                  elevation: 0,
+                                  minimumSize: const Size.fromHeight(48),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                ),
+                              ),
                             ),
-                          ),
+                          ],
                         ),
                       ],
                     ),

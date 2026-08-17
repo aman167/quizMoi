@@ -18,6 +18,8 @@ The repository currently contains a working UI prototype with:
 
 Quiz content, learner statistics, and tutor feedback are currently demo data. Persistence, real content ingestion, and the AI backend are planned in [DEVELOPMENT_ROADMAP.md](DEVELOPMENT_ROADMAP.md).
 
+The intended learner experience and current demo boundaries are defined in [PRODUCT_SPEC.md](PRODUCT_SPEC.md).
+
 ## Development environment
 
 The verified Windows development environment uses:

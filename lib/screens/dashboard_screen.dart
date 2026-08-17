@@ -85,6 +85,29 @@ class DashboardScreen extends StatelessWidget {
                         color: AppColors.onSurfaceVariant,
                       ),
                     ),
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.secondaryContainer,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.science_outlined, size: 18),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Demo mode: dashboard statistics and knowledge bases are sample data.',
+                              style: TextStyle(fontSize: 12),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                     const SizedBox(height: 20),
 
                     // Bento Stats Grid

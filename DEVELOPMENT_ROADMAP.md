@@ -18,7 +18,7 @@ Audit date: 2026-08-16
 
 Phase 0 completion evidence: the project is stored in a private GitHub repository, the Windows Flutter/Android toolchain and emulator are configured, the application runs on the Android emulator, the setup process is documented in `README.md`, the existing automated test passes, and a clean debug APK build succeeds. Physical-device coverage remains part of private-beta validation.
 
-Phase 1 progress: all analyzer findings have been cleared; quizzes start at zero; unanswered questions cannot advance; restart and exit actions require confirmation; missing results show an honest empty state; unfinished controls explain that they are planned; and provider/widget coverage has expanded to eight passing tests.
+Phase 1 progress: all analyzer findings have been cleared; quizzes start at zero; unanswered questions cannot advance; restart and exit actions require confirmation; missing results show an honest empty state; unfinished controls explain that they are planned; the version 1 learning loop and demo boundaries are documented; navigation and answer choices expose accessibility state; narrow-phone layouts are regression-tested; and provider/widget coverage has expanded to ten passing tests.
 
 ## Product direction
 
@@ -46,7 +46,7 @@ The roadmap deliberately prioritizes a narrow working learning loop before addin
 - No local persistence, quiz history, settings, account system, backend, network client, AI service, or error/loading states exist.
 ### Verification findings
 
-- `flutter test`: 8 tests pass.
+- `flutter test`: 10 tests pass.
 - `flutter analyze`: no issues found.
 - Android APK build: `flutter build apk --debug` succeeds.
 - Git/GitHub: private repository configured with development branches and pull requests.

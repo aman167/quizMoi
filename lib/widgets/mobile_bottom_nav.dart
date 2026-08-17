@@ -42,54 +42,51 @@ class MobileBottomNav extends StatelessWidget {
     required String label,
   }) {
     final isActive = currentIndex == index;
+    final foregroundColor = isActive
+        ? AppColors.onSecondaryContainer
+        : AppColors.onSurfaceVariant;
 
-    if (isActive) {
-      return GestureDetector(
-        onTap: () => onTap(index),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-          decoration: BoxDecoration(
-            color: AppColors.secondaryContainer,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, color: AppColors.onSecondaryContainer, size: 22),
-              const SizedBox(height: 2),
-              Text(
-                label,
-                style: const TextStyle(
-                  color: AppColors.onSecondaryContainer,
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
+    return Expanded(
+      child: Semantics(
+        button: true,
+        selected: isActive,
+        label: '$label tab',
+        child: InkWell(
+          onTap: () => onTap(index),
+          child: Center(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              constraints: const BoxConstraints(minHeight: 48),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: isActive
+                    ? AppColors.secondaryContainer
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: ExcludeSemantics(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(icon, color: foregroundColor, size: 22),
+                    const SizedBox(height: 2),
+                    Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: foregroundColor,
+                        fontSize: 11,
+                        fontWeight: isActive
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    return GestureDetector(
-      onTap: () => onTap(index),
-      behavior: HitTestBehavior.opaque,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: AppColors.onSurfaceVariant, size: 22),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              style: TextStyle(
-                color: AppColors.onSurfaceVariant,
-                fontSize: 11,
-                fontWeight: FontWeight.normal,
-              ),
             ),
-          ],
+          ),
         ),
       ),
     );

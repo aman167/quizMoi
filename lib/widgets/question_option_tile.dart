@@ -16,61 +16,75 @@ class QuestionOptionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Material(
-        color: isSelected
-            ? AppColors.primary.withValues(alpha: 0.05)
-            : AppColors.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(12),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            decoration: BoxDecoration(
+    return Semantics(
+      button: true,
+      selected: isSelected,
+      label: option.text,
+      child: ExcludeSemantics(
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          child: Material(
+            color: isSelected
+                ? AppColors.primary.withValues(alpha: 0.05)
+                : AppColors.surfaceContainerLowest,
+            borderRadius: BorderRadius.circular(12),
+            child: InkWell(
+              onTap: onTap,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: isSelected
-                    ? AppColors.primary
-                    : AppColors.outlineVariant,
-                width: isSelected ? 2 : 1,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isSelected
+                        ? AppColors.primary
+                        : AppColors.outlineVariant,
+                    width: isSelected ? 2 : 1,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 22,
+                      height: 22,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: isSelected
+                              ? AppColors.primary
+                              : AppColors.outline,
+                          width: 2,
+                        ),
+                        color: isSelected
+                            ? AppColors.primary
+                            : Colors.transparent,
+                      ),
+                      child: isSelected
+                          ? const Center(child: ContainerCircle())
+                          : null,
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Text(
+                        option.text,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: isSelected
+                              ? FontWeight.w600
+                              : FontWeight.w400,
+                          color: isSelected
+                              ? AppColors.primary
+                              : AppColors.onSurface,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 22,
-                  height: 22,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: isSelected ? AppColors.primary : AppColors.outline,
-                      width: 2,
-                    ),
-                    color: isSelected ? AppColors.primary : Colors.transparent,
-                  ),
-                  child: isSelected
-                      ? const Center(child: ContainerCircle())
-                      : null,
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Text(
-                    option.text,
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: isSelected
-                          ? FontWeight.w600
-                          : FontWeight.w400,
-                      color: isSelected
-                          ? AppColors.primary
-                          : AppColors.onSurface,
-                    ),
-                  ),
-                ),
-              ],
             ),
           ),
         ),

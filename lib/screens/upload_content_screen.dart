@@ -285,6 +285,27 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
                             color: AppColors.onSurface,
                           ),
                         ),
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: AppColors.secondaryContainer,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Icon(Icons.science_outlined, size: 18),
+                              SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Demo mode uses sample questions. Your content is not uploaded or processed yet.',
+                                  style: TextStyle(fontSize: 12),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                         const SizedBox(height: 14),
 
                         // Text Area Input
@@ -293,10 +314,12 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
                             TextField(
                               controller: _textController,
                               maxLines: 6,
+                              textInputAction: TextInputAction.newline,
                               style: const TextStyle(fontSize: 14),
                               decoration: InputDecoration(
+                                labelText: 'Study content (demo only)',
                                 hintText:
-                                    'Paste text, enter a URL, YouTube video link, type a topic, or describe what you want to quiz about... (You can also paste or upload up to 10 images)',
+                                    'Paste French text, a topic, or a link. Source-specific generation will be connected in a later phase.',
                                 hintStyle: TextStyle(
                                   fontSize: 13,
                                   color: AppColors.onSurfaceVariant.withValues(
