@@ -66,6 +66,23 @@ class _ActiveTestingScreenState extends State<ActiveTestingScreen> {
     provider.startQuiz('restart');
   }
 
+  Future<void> _submitQuiz(QuizProvider provider) async {
+    final confirmed = await _confirmAction(
+      title: 'Submit this quiz?',
+      message:
+          'You answered all ${provider.currentQuiz!.totalQuestions} questions. Your answers cannot be changed after submission.',
+      confirmLabel: 'Submit quiz',
+    );
+    if (!confirmed || !mounted) return;
+
+    if (!provider.nextQuestion()) return;
+    setState(() => _allowPop = true);
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => const ResultsFeedbackScreen()),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -484,16 +501,10 @@ class _ActiveTestingScreenState extends State<ActiveTestingScreen> {
                               child: ElevatedButton.icon(
                                 onPressed: provider.canAdvance
                                     ? () {
-                                        if (!provider.nextQuestion()) return;
                                         if (isLastQuestion) {
-                                          setState(() => _allowPop = true);
-                                          Navigator.pushReplacement(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (context) =>
-                                                  const ResultsFeedbackScreen(),
-                                            ),
-                                          );
+                                          _submitQuiz(provider);
+                                        } else {
+                                          provider.nextQuestion();
                                         }
                                       }
                                     : null,

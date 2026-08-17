@@ -238,12 +238,14 @@ class DashboardScreen extends StatelessWidget {
                           size: 20,
                         ),
                         SizedBox(width: 8),
-                        Text(
-                          'Your Knowledge Bases',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.onSurface,
+                        Expanded(
+                          child: Text(
+                            'Your Knowledge Bases',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.onSurface,
+                            ),
                           ),
                         ),
                       ],

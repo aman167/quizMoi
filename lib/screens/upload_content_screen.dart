@@ -112,8 +112,10 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
                   color: AppColors.outlineVariant.withValues(alpha: 0.3),
                 ),
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
+              child: Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 4,
+                runSpacing: 4,
                 children: [
                   _buildTabButton(0, Icons.quiz, 'Quiz'),
                   _buildTabButton(1, Icons.style, 'Flashcards'),
@@ -224,47 +226,52 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
                         ),
                       ),
                     ),
-                    child: Row(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(
-                          Icons.edit_note,
-                          color: AppColors.tertiary,
-                          size: 20,
-                        ),
-                        const SizedBox(width: 8),
-                        const Expanded(
-                          child: Text(
-                            'Want to build your own quiz from scratch?',
-                            style: TextStyle(
-                              fontSize: 12,
+                        const Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(
+                              Icons.edit_note,
                               color: AppColors.tertiary,
+                              size: 20,
                             ),
-                          ),
-                        ),
-                        TextButton(
-                          onPressed: () =>
-                              _showComingSoon('Manual quiz creation'),
-                          style: TextButton.styleFrom(
-                            padding: EdgeInsets.zero,
-                            minimumSize: Size.zero,
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          ),
-                          child: Row(
-                            children: const [
-                              Text(
-                                'Create Manually',
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Want to build your own quiz from scratch?',
                                 style: TextStyle(
                                   fontSize: 12,
-                                  fontWeight: FontWeight.bold,
                                   color: AppColors.tertiary,
                                 ),
                               ),
-                              Icon(
-                                Icons.arrow_forward,
-                                size: 12,
-                                color: AppColors.tertiary,
-                              ),
-                            ],
+                            ),
+                          ],
+                        ),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton(
+                            onPressed: () =>
+                                _showComingSoon('Manual quiz creation'),
+                            child: const Wrap(
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: [
+                                Text(
+                                  'Create Manually',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.tertiary,
+                                  ),
+                                ),
+                                Icon(
+                                  Icons.arrow_forward,
+                                  size: 12,
+                                  color: AppColors.tertiary,
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ],
@@ -403,7 +410,7 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
                         // Generate Button
                         SizedBox(
                           width: double.infinity,
-                          child: ElevatedButton.icon(
+                          child: ElevatedButton(
                             onPressed: () {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
@@ -425,14 +432,6 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
                                 ),
                               );
                             },
-                            icon: const Text(
-                              'Try Demo Quiz',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            label: const Icon(Icons.auto_awesome, size: 20),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.primary,
                               foregroundColor: AppColors.onPrimary,
@@ -441,6 +440,22 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
+                            ),
+                            child: const Wrap(
+                              alignment: WrapAlignment.center,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              spacing: 8,
+                              children: [
+                                Text(
+                                  'Try Demo Quiz',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Icon(Icons.auto_awesome, size: 20),
+                              ],
                             ),
                           ),
                         ),

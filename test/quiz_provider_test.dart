@@ -27,6 +27,20 @@ void main() {
       expect(provider.currentQuestionIndex, 1);
     });
 
+    test('can revisit a question and replace its earlier answer', () {
+      final provider = QuizProvider()..startQuiz('test');
+
+      provider.selectOption('a');
+      provider.nextQuestion();
+      provider.previousQuestion();
+      provider.selectOption('b');
+
+      expect(provider.currentQuestionIndex, 0);
+      expect(provider.currentQuestion!.selectedOptionId, 'b');
+      expect(provider.currentQuestion!.isCorrect, isTrue);
+      expect(provider.currentQuiz!.answeredCount, 1);
+    });
+
     test('completes and scores a fully correct quiz', () {
       final provider = QuizProvider()..startQuiz('test');
 
