@@ -10,10 +10,14 @@ import 'features/learning/data/local/quiz_database.dart';
 import 'features/learning/data/repositories/sqlite_quiz_repository.dart';
 import 'features/learning/data/repositories/sqlite_attempt_repository.dart';
 import 'features/learning/data/repositories/memory_attempt_repository.dart';
+import 'features/learning/data/repositories/memory_knowledge_base_repository.dart';
+import 'features/learning/data/repositories/sqlite_knowledge_base_repository.dart';
 import 'features/learning/domain/repositories/attempt_repository.dart';
+import 'features/learning/domain/repositories/knowledge_base_repository.dart';
 import 'features/learning/domain/repositories/quiz_repository.dart';
 import 'features/learning/presentation/state/saved_quiz_provider.dart';
 import 'features/learning/presentation/state/attempt_history_provider.dart';
+import 'features/learning/presentation/state/knowledge_base_provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,6 +26,7 @@ Future<void> main() async {
     QuizMoiApp(
       quizRepository: SqliteQuizRepository(database),
       attemptRepository: SqliteAttemptRepository(database),
+      knowledgeBaseRepository: SqliteKnowledgeBaseRepository(database),
     ),
   );
 }
@@ -29,19 +34,27 @@ Future<void> main() async {
 class QuizMoiApp extends StatelessWidget {
   final QuizRepository quizRepository;
   final AttemptRepository? attemptRepository;
+  final KnowledgeBaseRepository? knowledgeBaseRepository;
 
   const QuizMoiApp({
     super.key,
     required this.quizRepository,
     this.attemptRepository,
+    this.knowledgeBaseRepository,
   });
 
   @override
   Widget build(BuildContext context) {
     final effectiveAttemptRepository =
         attemptRepository ?? MemoryAttemptRepository();
+    final effectiveKnowledgeBaseRepository =
+        knowledgeBaseRepository ?? MemoryKnowledgeBaseRepository();
     return MultiProvider(
       providers: [
+        ChangeNotifierProvider(
+          create: (_) =>
+              KnowledgeBaseProvider(effectiveKnowledgeBaseRepository)..load(),
+        ),
         ChangeNotifierProvider(
           create: (_) => AttemptHistoryProvider(
             attemptRepository: effectiveAttemptRepository,

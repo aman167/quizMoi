@@ -20,7 +20,7 @@ Phase 0 completion evidence: the project is stored in a private GitHub repositor
 
 Phase 1 completion evidence: all analyzer findings have been cleared; quizzes start at zero; unanswered questions cannot advance; restart, exit, and final submission actions require confirmation; previous/next navigation preserves answers and permits corrections; missing results show an honest empty state; unfinished controls explain that they are planned; the version 1 learning loop and demo boundaries are documented; navigation and answer choices expose accessibility state; multiline keyboard input works; all main screens pass narrow-phone checks with enlarged text; 16 provider/widget tests pass; and a clean debug APK build succeeds.
 
-Phase 2 progress: immutable, JSON-serializable learning entities now cover source documents, knowledge bases, concepts, quiz definitions, explanations, attempts, answers, and learner settings. Repository interfaces separate domain code from storage, and SQLite can transactionally save, restore, update, archive-filter, and delete complete quiz definitions and attempts. The app opens the private database during startup; learners can create and edit validated multiple-choice quizzes manually, see saved quizzes on the Dashboard, duplicate/archive/restore/delete them, and launch them through the testing engine. In-progress answers, position, and elapsed time are persisted; app startup offers a Resume Quiz action, while completion, restart, retake, and abandonment update stored attempts consistently. Completed attempts now produce a real aggregate accuracy score and a recent-attempt history on the Dashboard, with automatic refresh after quiz completion. Saved knowledge-base/settings flows, migration away from the remaining sample level/goal/streak/knowledge-base data, and broader database migration coverage are still in progress.
+Phase 2 progress: immutable, JSON-serializable learning entities now cover source documents, knowledge bases, concepts, quiz definitions, explanations, attempts, answers, and learner settings. Repository interfaces separate domain code from storage, and SQLite can transactionally save, restore, update, archive-filter, and delete complete quiz definitions, knowledge bases, and attempts. The app opens the private database during startup; learners can create, rename, archive, restore, and delete knowledge bases, assign manual quizzes to them or leave quizzes Unfiled, and see the relationship on the Dashboard. Deleting a knowledge base safely preserves and unfiles its quizzes. Learners can also create and edit validated multiple-choice quizzes manually, duplicate/archive/restore/delete them, and launch them through the testing engine. In-progress answers, position, and elapsed time are persisted; app startup offers a Resume Quiz action, while completion, restart, retake, and abandonment update stored attempts consistently. Completed attempts produce a real aggregate accuracy score and recent-attempt history, with automatic refresh after quiz completion. Saved learner-settings flows, migration away from the remaining sample level/goal/streak data, and broader database migration coverage are still in progress.
 
 ## Product direction
 
@@ -40,15 +40,16 @@ The roadmap deliberately prioritizes a narrow working learning loop before addin
 
 ### What is still prototype-only
 
-- Demo level, goal, streak, knowledge bases, and most tutor content remain hard-coded; manually created quizzes, their attempts, aggregate accuracy, and recent history are real local data.
+- Demo level, goal, streak, and most tutor content remain hard-coded; knowledge bases, manually created quizzes, their attempts, aggregate accuracy, and recent history are real local data.
 - The entered source text is not used when `Generate Quiz` is pressed.
 - File upload, camera scan, URL ingestion, review, menu, and several buttons have no behavior.
 - Flashcards and Notes are advertised but do not have separate product flows.
 - Question models mention fill-in-the-blank and translation, but the testing UI only supports selectable options.
-- Local quiz and attempt persistence and Dashboard attempt history now exist, but saved knowledge bases, learner settings UI, a full history/detail screen, accounts, backend/network clients, and AI services are not yet implemented.
+- Local knowledge-base, quiz, and attempt persistence and Dashboard attempt history now exist, but learner settings UI, a full history/detail screen, accounts, backend/network clients, and AI services are not yet implemented.
+
 ### Verification findings
 
-- `flutter test`: 37 tests pass.
+- `flutter test`: 41 tests pass.
 - `flutter analyze`: no issues found.
 - Android APK build: `flutter build apk --debug` succeeds.
 - Git/GitHub: private repository configured with development branches and pull requests.
@@ -325,10 +326,9 @@ A feature is done only when:
 
 Execute these tasks next, in order:
 
-1. Persist real knowledge bases and connect saved quizzes to them.
-2. Persist learner settings and replace the remaining sample Dashboard data.
-3. Add explicit SQLite migration coverage and verify data survives upgrades.
-4. Complete the Phase 2 exit criteria with an end-to-end create/reopen/complete/history test.
-5. Begin Phase 3 with distinct typed-answer questions and documented answer-normalization rules.
+1. Persist learner settings and replace the remaining sample Dashboard data.
+2. Add explicit SQLite migration coverage and verify data survives upgrades.
+3. Complete the Phase 2 exit criteria with an end-to-end create/reopen/complete/history test.
+4. Begin Phase 3 with distinct typed-answer questions and documented answer-normalization rules.
 
 This order finishes the local-first foundation before expanding the testing engine and later content-ingestion work.

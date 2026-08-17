@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../../../theme/app_colors.dart';
 import '../../domain/entities/learning_entities.dart';
+import '../state/knowledge_base_provider.dart';
 import '../state/saved_quiz_provider.dart';
 
 class ManualQuizEditorScreen extends StatefulWidget {
@@ -18,6 +19,7 @@ class _ManualQuizEditorScreenState extends State<ManualQuizEditorScreen> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _titleController;
   final List<_QuestionDraft> _questions = [];
+  String? _knowledgeBaseId;
   bool _isSaving = false;
 
   bool get _isEditing => widget.existingQuiz != null;
@@ -26,6 +28,7 @@ class _ManualQuizEditorScreenState extends State<ManualQuizEditorScreen> {
   void initState() {
     super.initState();
     _titleController = TextEditingController(text: widget.existingQuiz?.title);
+    _knowledgeBaseId = widget.existingQuiz?.knowledgeBaseId;
     final existingQuestions = widget.existingQuiz?.questions;
     if (existingQuestions == null || existingQuestions.isEmpty) {
       _questions.add(_QuestionDraft.empty());
@@ -64,7 +67,7 @@ class _ManualQuizEditorScreenState extends State<ManualQuizEditorScreen> {
     final existing = widget.existingQuiz;
     final quiz = QuizDefinition(
       id: existing?.id ?? savedQuizProvider.newId('quiz'),
-      knowledgeBaseId: existing?.knowledgeBaseId,
+      knowledgeBaseId: _knowledgeBaseId,
       title: _titleController.text.trim(),
       questions: _questions
           .map(
@@ -96,6 +99,18 @@ class _ManualQuizEditorScreenState extends State<ManualQuizEditorScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final knowledgeBaseProvider = context.watch<KnowledgeBaseProvider>();
+    final availableKnowledgeBases = [
+      ...knowledgeBaseProvider.activeKnowledgeBases,
+      if (_knowledgeBaseId != null &&
+          knowledgeBaseProvider.findById(_knowledgeBaseId)?.isArchived == true)
+        knowledgeBaseProvider.findById(_knowledgeBaseId)!,
+    ];
+    final selectedKnowledgeBaseExists = availableKnowledgeBases.any(
+      (knowledgeBase) => knowledgeBase.id == _knowledgeBaseId,
+    );
+    final dropdownValue = selectedKnowledgeBaseExists ? _knowledgeBaseId! : '';
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -136,6 +151,39 @@ class _ManualQuizEditorScreenState extends State<ManualQuizEditorScreen> {
               ),
               textInputAction: TextInputAction.next,
               validator: _requiredText,
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              key: ValueKey(
+                '$dropdownValue-${availableKnowledgeBases.map((item) => item.id).join(',')}',
+              ),
+              initialValue: dropdownValue,
+              decoration: const InputDecoration(
+                labelText: 'Knowledge base',
+                helperText: 'Optional study folder for this quiz',
+                border: OutlineInputBorder(),
+              ),
+              items: [
+                const DropdownMenuItem(value: '', child: Text('Unfiled')),
+                ...availableKnowledgeBases.map(
+                  (knowledgeBase) => DropdownMenuItem(
+                    value: knowledgeBase.id,
+                    child: Text(
+                      '${knowledgeBase.title}${knowledgeBase.isArchived ? ' (Archived)' : ''}',
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+              ],
+              onChanged: _isSaving
+                  ? null
+                  : (value) {
+                      setState(() {
+                        _knowledgeBaseId = value == null || value.isEmpty
+                            ? null
+                            : value;
+                      });
+                    },
             ),
             const SizedBox(height: 20),
             ..._questions.indexed.map((entry) {

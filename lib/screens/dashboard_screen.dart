@@ -3,12 +3,12 @@ import 'package:provider/provider.dart';
 import '../theme/app_colors.dart';
 import '../state/quiz_provider.dart';
 import '../widgets/bento_stat_card.dart';
-import '../widgets/knowledge_base_card.dart';
 import 'upload_content_screen.dart';
 import 'active_testing_screen.dart';
 import '../features/learning/presentation/widgets/saved_quiz_library.dart';
 import '../features/learning/presentation/state/attempt_history_provider.dart';
 import '../features/learning/presentation/widgets/attempt_history_section.dart';
+import '../features/learning/presentation/widgets/knowledge_base_library.dart';
 
 class DashboardScreen extends StatelessWidget {
   final Function(int)? onNavigateTab;
@@ -20,7 +20,6 @@ class DashboardScreen extends StatelessWidget {
     return Consumer<QuizProvider>(
       builder: (context, provider, child) {
         final stats = provider.userStats;
-        final kbs = provider.knowledgeBases;
         final history = context.watch<AttemptHistoryProvider>();
 
         return Scaffold(
@@ -105,7 +104,7 @@ class DashboardScreen extends StatelessWidget {
                           SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              'Saved quizzes, accuracy, and attempt history are real. Level, daily goal, streak, and knowledge bases are still sample data.',
+                              'Knowledge bases, saved quizzes, accuracy, and attempt history are real. Level, daily goal, and streak are still sample data.',
                               style: TextStyle(fontSize: 12),
                             ),
                           ),
@@ -278,67 +277,13 @@ class DashboardScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 24),
 
+                    const KnowledgeBaseLibrary(),
+                    const SizedBox(height: 24),
+
                     const SavedQuizLibrary(),
                     const SizedBox(height: 24),
 
                     const AttemptHistorySection(),
-                    const SizedBox(height: 24),
-
-                    // Section Title
-                    Row(
-                      children: const [
-                        Icon(
-                          Icons.folder_copy,
-                          color: AppColors.primary,
-                          size: 20,
-                        ),
-                        SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'Your Knowledge Bases',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.onSurface,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 14),
-
-                    // Knowledge Bases List
-                    ListView.separated(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: kbs.length,
-                      separatorBuilder: (context, index) =>
-                          const SizedBox(height: 12),
-                      itemBuilder: (context, index) {
-                        final kb = kbs[index];
-                        return KnowledgeBaseCard(
-                          knowledgeBase: kb,
-                          onReview: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Reviewing ${kb.title}'),
-                                duration: const Duration(seconds: 1),
-                              ),
-                            );
-                          },
-                          onTestMe: () {
-                            provider.startQuiz(kb.id);
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    const ActiveTestingScreen(),
-                              ),
-                            );
-                          },
-                        );
-                      },
-                    ),
                   ],
                 ),
               ),

@@ -58,7 +58,29 @@ class KnowledgeBaseRecord {
     required this.isArchived,
     required this.createdAt,
     required this.updatedAt,
-  }) : sourceDocumentIds = List.unmodifiable(sourceDocumentIds);
+  }) : sourceDocumentIds = List.unmodifiable(sourceDocumentIds) {
+    if (title.trim().isEmpty) {
+      throw ArgumentError.value(title, 'title', 'Title cannot be empty.');
+    }
+  }
+
+  KnowledgeBaseRecord copyWith({
+    String? id,
+    String? title,
+    List<String>? sourceDocumentIds,
+    bool? isArchived,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) {
+    return KnowledgeBaseRecord(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      sourceDocumentIds: sourceDocumentIds ?? this.sourceDocumentIds,
+      isArchived: isArchived ?? this.isArchived,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
 
   Map<String, Object?> toJson() => {
     'id': id,

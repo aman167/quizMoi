@@ -6,6 +6,7 @@ import '../../../../state/quiz_provider.dart';
 import '../../../../theme/app_colors.dart';
 import '../../domain/entities/learning_entities.dart';
 import '../screens/manual_quiz_editor_screen.dart';
+import '../state/knowledge_base_provider.dart';
 import '../state/saved_quiz_provider.dart';
 
 enum _QuizAction { edit, duplicate, archive, delete }
@@ -70,6 +71,7 @@ class SavedQuizLibrary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final knowledgeBaseProvider = context.watch<KnowledgeBaseProvider>();
     return Consumer<SavedQuizProvider>(
       builder: (context, provider, child) {
         return Column(
@@ -119,6 +121,9 @@ class SavedQuizLibrary extends StatelessWidget {
                   padding: const EdgeInsets.only(bottom: 12),
                   child: _SavedQuizCard(
                     quiz: quiz,
+                    knowledgeBaseTitle: knowledgeBaseProvider
+                        .findById(quiz.knowledgeBaseId)
+                        ?.title,
                     onTest: () => _startQuiz(context, quiz),
                     onAction: (action) => _handleAction(context, quiz, action),
                   ),
@@ -181,11 +186,13 @@ class _ErrorState extends StatelessWidget {
 
 class _SavedQuizCard extends StatelessWidget {
   final QuizDefinition quiz;
+  final String? knowledgeBaseTitle;
   final VoidCallback onTest;
   final ValueChanged<_QuizAction> onAction;
 
   const _SavedQuizCard({
     required this.quiz,
+    required this.knowledgeBaseTitle,
     required this.onTest,
     required this.onAction,
   });
@@ -219,6 +226,14 @@ class _SavedQuizCard extends StatelessWidget {
                       Text(
                         '${quiz.questions.length} ${quiz.questions.length == 1 ? 'question' : 'questions'}${quiz.isArchived ? ' • Archived' : ''}',
                         style: TextStyle(color: AppColors.onSurfaceVariant),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        'Knowledge base: ${knowledgeBaseTitle ?? 'Unfiled'}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.onSurfaceVariant,
+                        ),
                       ),
                     ],
                   ),

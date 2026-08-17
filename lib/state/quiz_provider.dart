@@ -29,33 +29,6 @@ class QuizProvider extends ChangeNotifier {
     streakDays: 3,
   );
 
-  final List<KnowledgeBase> _knowledgeBases = [
-    KnowledgeBase(
-      id: 'kb1',
-      title: 'French History Revolution PDF',
-      sourceType: 'AI Generated',
-      iconName: 'picture_as_pdf',
-      questionCount: 25,
-      createdDate: 'Apr 24',
-    ),
-    KnowledgeBase(
-      id: 'kb2',
-      title: 'Vocab List 3: Subjunctive Mood',
-      sourceType: 'Manual Entry',
-      iconName: 'text_snippet',
-      questionCount: 40,
-      createdDate: 'Apr 20',
-    ),
-    KnowledgeBase(
-      id: 'kb3',
-      title: 'Le Monde Article Analysis',
-      sourceType: 'Web Scrape',
-      iconName: 'link',
-      questionCount: 12,
-      createdDate: 'Apr 18',
-    ),
-  ];
-
   Quiz? _currentQuiz;
   int _currentQuestionIndex = 0;
   int _elapsedSeconds = 0;
@@ -69,7 +42,6 @@ class QuizProvider extends ChangeNotifier {
   bool _completionReported = false;
 
   UserStats get userStats => _userStats;
-  List<KnowledgeBase> get knowledgeBases => _knowledgeBases;
   Quiz? get currentQuiz => _currentQuiz;
   int get currentQuestionIndex => _currentQuestionIndex;
   int get elapsedSeconds => _elapsedSeconds;

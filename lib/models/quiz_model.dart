@@ -69,26 +69,3 @@ class Quiz {
   List<QuizQuestion> get incorrectQuestions =>
       questions.where((q) => q.isAnswered && !q.isCorrect).toList();
 }
-
-/// Metadata for a knowledge base that can generate quizzes.
-class KnowledgeBase {
-  final String id;
-  final String title;
-
-  /// How the knowledge base was created: `'AI Generated'`, `'Manual Entry'`,
-  /// or `'Web Scrape'`.
-  final String sourceType;
-
-  final String iconName;
-  final int questionCount;
-  final String createdDate;
-
-  KnowledgeBase({
-    required this.id,
-    required this.title,
-    required this.sourceType,
-    required this.iconName,
-    required this.questionCount,
-    required this.createdDate,
-  });
-}

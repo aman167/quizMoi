@@ -16,9 +16,11 @@ import 'package:quiz_moi_app/screens/upload_content_screen.dart';
 import 'package:quiz_moi_app/state/quiz_provider.dart';
 import 'package:quiz_moi_app/features/learning/data/repositories/memory_quiz_repository.dart';
 import 'package:quiz_moi_app/features/learning/data/repositories/memory_attempt_repository.dart';
+import 'package:quiz_moi_app/features/learning/data/repositories/memory_knowledge_base_repository.dart';
 import 'package:quiz_moi_app/features/learning/domain/entities/learning_entities.dart';
 import 'package:quiz_moi_app/features/learning/presentation/state/saved_quiz_provider.dart';
 import 'package:quiz_moi_app/features/learning/presentation/state/attempt_history_provider.dart';
+import 'package:quiz_moi_app/features/learning/presentation/state/knowledge_base_provider.dart';
 
 Widget _testApp(
   QuizProvider provider,
@@ -33,11 +35,15 @@ Widget _testApp(
     attemptRepository: MemoryAttemptRepository(),
     quizRepository: savedProvider.repository,
   )..load();
+  final knowledgeBaseProvider = KnowledgeBaseProvider(
+    MemoryKnowledgeBaseRepository(),
+  )..load();
   return MultiProvider(
     providers: [
       ChangeNotifierProvider.value(value: provider),
       ChangeNotifierProvider.value(value: savedProvider),
       ChangeNotifierProvider.value(value: historyProvider),
+      ChangeNotifierProvider.value(value: knowledgeBaseProvider),
     ],
     child: MaterialApp(
       builder: (context, child) => MediaQuery(
