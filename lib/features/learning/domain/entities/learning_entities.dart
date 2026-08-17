@@ -135,7 +135,21 @@ class LearnerSettings {
     required this.cefrLevel,
     required this.dailyQuestionGoal,
     required this.remindersEnabled,
-  });
+  }) : assert(dailyQuestionGoal > 0);
+
+  LearnerSettings copyWith({
+    String? id,
+    String? cefrLevel,
+    int? dailyQuestionGoal,
+    bool? remindersEnabled,
+  }) {
+    return LearnerSettings(
+      id: id ?? this.id,
+      cefrLevel: cefrLevel ?? this.cefrLevel,
+      dailyQuestionGoal: dailyQuestionGoal ?? this.dailyQuestionGoal,
+      remindersEnabled: remindersEnabled ?? this.remindersEnabled,
+    );
+  }
 
   Map<String, Object?> toJson() => {
     'id': id,

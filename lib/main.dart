@@ -12,12 +12,17 @@ import 'features/learning/data/repositories/sqlite_attempt_repository.dart';
 import 'features/learning/data/repositories/memory_attempt_repository.dart';
 import 'features/learning/data/repositories/memory_knowledge_base_repository.dart';
 import 'features/learning/data/repositories/sqlite_knowledge_base_repository.dart';
+import 'features/learning/data/repositories/memory_learner_settings_repository.dart';
+import 'features/learning/data/repositories/sqlite_learner_settings_repository.dart';
 import 'features/learning/domain/repositories/attempt_repository.dart';
 import 'features/learning/domain/repositories/knowledge_base_repository.dart';
+import 'features/learning/domain/repositories/learner_settings_repository.dart';
 import 'features/learning/domain/repositories/quiz_repository.dart';
 import 'features/learning/presentation/state/saved_quiz_provider.dart';
 import 'features/learning/presentation/state/attempt_history_provider.dart';
 import 'features/learning/presentation/state/knowledge_base_provider.dart';
+import 'features/learning/presentation/state/learner_settings_provider.dart';
+import 'features/learning/presentation/screens/learner_settings_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,6 +32,7 @@ Future<void> main() async {
       quizRepository: SqliteQuizRepository(database),
       attemptRepository: SqliteAttemptRepository(database),
       knowledgeBaseRepository: SqliteKnowledgeBaseRepository(database),
+      learnerSettingsRepository: SqliteLearnerSettingsRepository(database),
     ),
   );
 }
@@ -35,12 +41,14 @@ class QuizMoiApp extends StatelessWidget {
   final QuizRepository quizRepository;
   final AttemptRepository? attemptRepository;
   final KnowledgeBaseRepository? knowledgeBaseRepository;
+  final LearnerSettingsRepository? learnerSettingsRepository;
 
   const QuizMoiApp({
     super.key,
     required this.quizRepository,
     this.attemptRepository,
     this.knowledgeBaseRepository,
+    this.learnerSettingsRepository,
   });
 
   @override
@@ -49,8 +57,15 @@ class QuizMoiApp extends StatelessWidget {
         attemptRepository ?? MemoryAttemptRepository();
     final effectiveKnowledgeBaseRepository =
         knowledgeBaseRepository ?? MemoryKnowledgeBaseRepository();
+    final effectiveLearnerSettingsRepository =
+        learnerSettingsRepository ?? MemoryLearnerSettingsRepository();
     return MultiProvider(
       providers: [
+        ChangeNotifierProvider(
+          create: (_) =>
+              LearnerSettingsProvider(effectiveLearnerSettingsRepository)
+                ..load(),
+        ),
         ChangeNotifierProvider(
           create: (_) =>
               KnowledgeBaseProvider(effectiveKnowledgeBaseRepository)..load(),
@@ -125,35 +140,5 @@ class AccountScreen extends StatelessWidget {
   const AccountScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Account & Settings'),
-        centerTitle: true,
-      ),
-      body: const Center(
-        child: Padding(
-          padding: EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.account_circle, size: 64, color: Colors.grey),
-              SizedBox(height: 16),
-              Text(
-                'Account features are coming later',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              SizedBox(height: 8),
-              Text(
-                'quizMoi currently runs in local demo mode, so no account is required.',
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => const LearnerSettingsScreen();
 }

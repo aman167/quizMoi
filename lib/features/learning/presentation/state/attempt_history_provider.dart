@@ -59,6 +59,27 @@ class AttemptHistoryProvider extends ChangeNotifier {
         .fold(0, (total, entry) => total + entry.totalQuestions);
   }
 
+  int get currentStreakDays {
+    final completedDays = _entries
+        .map((entry) => _dateKey(entry.completedAt.toLocal()))
+        .toSet();
+    if (completedDays.isEmpty) return 0;
+
+    final now = _now().toLocal();
+    var cursor = DateTime(now.year, now.month, now.day);
+    if (!completedDays.contains(_dateKey(cursor))) {
+      cursor = _previousCalendarDay(cursor);
+      if (!completedDays.contains(_dateKey(cursor))) return 0;
+    }
+
+    var streak = 0;
+    while (completedDays.contains(_dateKey(cursor))) {
+      streak++;
+      cursor = _previousCalendarDay(cursor);
+    }
+    return streak;
+  }
+
   Future<void> load() async {
     _state = AttemptHistoryLoadState.loading;
     _error = null;
@@ -102,4 +123,10 @@ class AttemptHistoryProvider extends ChangeNotifier {
       first.year == second.year &&
       first.month == second.month &&
       first.day == second.day;
+
+  String _dateKey(DateTime value) =>
+      '${value.year}-${value.month}-${value.day}';
+
+  DateTime _previousCalendarDay(DateTime value) =>
+      DateTime(value.year, value.month, value.day - 1);
 }

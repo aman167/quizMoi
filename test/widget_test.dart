@@ -17,33 +17,43 @@ import 'package:quiz_moi_app/state/quiz_provider.dart';
 import 'package:quiz_moi_app/features/learning/data/repositories/memory_quiz_repository.dart';
 import 'package:quiz_moi_app/features/learning/data/repositories/memory_attempt_repository.dart';
 import 'package:quiz_moi_app/features/learning/data/repositories/memory_knowledge_base_repository.dart';
+import 'package:quiz_moi_app/features/learning/data/repositories/memory_learner_settings_repository.dart';
 import 'package:quiz_moi_app/features/learning/domain/entities/learning_entities.dart';
 import 'package:quiz_moi_app/features/learning/presentation/state/saved_quiz_provider.dart';
 import 'package:quiz_moi_app/features/learning/presentation/state/attempt_history_provider.dart';
 import 'package:quiz_moi_app/features/learning/presentation/state/knowledge_base_provider.dart';
+import 'package:quiz_moi_app/features/learning/presentation/state/learner_settings_provider.dart';
 
 Widget _testApp(
   QuizProvider provider,
   Widget home, {
   TextScaler textScaler = TextScaler.noScaling,
   SavedQuizProvider? savedQuizProvider,
+  AttemptHistoryProvider? attemptHistoryProvider,
+  LearnerSettingsProvider? learnerSettingsProvider,
 }) {
   final savedProvider =
       savedQuizProvider ?? SavedQuizProvider(MemoryQuizRepository())
         ..load();
-  final historyProvider = AttemptHistoryProvider(
-    attemptRepository: MemoryAttemptRepository(),
-    quizRepository: savedProvider.repository,
-  )..load();
+  final historyProvider =
+      attemptHistoryProvider ??
+      (AttemptHistoryProvider(
+        attemptRepository: MemoryAttemptRepository(),
+        quizRepository: savedProvider.repository,
+      )..load());
   final knowledgeBaseProvider = KnowledgeBaseProvider(
     MemoryKnowledgeBaseRepository(),
   )..load();
+  final effectiveLearnerSettingsProvider =
+      learnerSettingsProvider ??
+      (LearnerSettingsProvider(MemoryLearnerSettingsRepository())..load());
   return MultiProvider(
     providers: [
       ChangeNotifierProvider.value(value: provider),
       ChangeNotifierProvider.value(value: savedProvider),
       ChangeNotifierProvider.value(value: historyProvider),
       ChangeNotifierProvider.value(value: knowledgeBaseProvider),
+      ChangeNotifierProvider.value(value: effectiveLearnerSettingsProvider),
     ],
     child: MaterialApp(
       builder: (context, child) => MediaQuery(
@@ -75,6 +85,71 @@ void main() {
       ),
       findsOneWidget,
     );
+  });
+
+  testWidgets('Dashboard derives level, goal, and streak from local data', (
+    WidgetTester tester,
+  ) async {
+    final now = DateTime.now();
+    final quiz = _savedQuiz(now);
+    final quizRepository = MemoryQuizRepository(initialQuizzes: [quiz]);
+    final savedProvider = SavedQuizProvider(quizRepository);
+    await savedProvider.load();
+    final historyProvider = AttemptHistoryProvider(
+      attemptRepository: MemoryAttemptRepository(
+        initialAttempts: [
+          QuizAttempt(
+            id: 'attempt-completed',
+            quizId: quiz.id,
+            status: AttemptStatus.completed,
+            answers: [
+              QuestionAnswer(
+                questionId: 'question-1',
+                value: 'a',
+                answeredAt: now,
+              ),
+              QuestionAnswer(
+                questionId: 'question-2',
+                value: 'b',
+                answeredAt: now,
+              ),
+            ],
+            currentQuestionIndex: 1,
+            elapsedSeconds: 20,
+            startedAt: now.subtract(const Duration(seconds: 20)),
+            completedAt: now,
+          ),
+        ],
+      ),
+      quizRepository: quizRepository,
+      now: () => now,
+    );
+    await historyProvider.load();
+    final settingsProvider = LearnerSettingsProvider(
+      MemoryLearnerSettingsRepository(
+        initialSettings: const LearnerSettings(
+          cefrLevel: 'B2',
+          dailyQuestionGoal: 10,
+          remindersEnabled: false,
+        ),
+      ),
+    );
+    await settingsProvider.load();
+
+    await tester.pumpWidget(
+      _testApp(
+        QuizProvider(),
+        const DashboardScreen(),
+        savedQuizProvider: savedProvider,
+        attemptHistoryProvider: historyProvider,
+        learnerSettingsProvider: settingsProvider,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('B2 French'), findsOneWidget);
+    expect(find.text('2 / 10 Questions'), findsOneWidget);
+    expect(find.text('1 Day Streak!'), findsOneWidget);
   });
 
   testWidgets('Quiz requires an answer before moving to the next question', (
@@ -194,22 +269,18 @@ void main() {
     expect(find.text('Next'), findsOneWidget);
   });
 
-  testWidgets('Navigation and account screen explain demo state', (
+  testWidgets('Navigation opens locally stored learner settings', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(QuizMoiApp(quizRepository: MemoryQuizRepository()));
 
     expect(find.bySemanticsLabel('Review tab'), findsOneWidget);
     await tester.tap(find.bySemanticsLabel('Account tab'));
-    await tester.pump();
+    await tester.pumpAndSettle();
 
-    expect(find.text('Account features are coming later'), findsOneWidget);
-    expect(
-      find.text(
-        'quizMoi currently runs in local demo mode, so no account is required.',
-      ),
-      findsOneWidget,
-    );
+    expect(find.text('Local learner profile'), findsOneWidget);
+    expect(find.text('Current French level'), findsOneWidget);
+    expect(find.text('Daily question goal'), findsOneWidget);
   });
 
   testWidgets('App startup offers and opens a restored quiz session', (

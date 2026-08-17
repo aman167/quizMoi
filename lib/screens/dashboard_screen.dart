@@ -9,6 +9,7 @@ import '../features/learning/presentation/widgets/saved_quiz_library.dart';
 import '../features/learning/presentation/state/attempt_history_provider.dart';
 import '../features/learning/presentation/widgets/attempt_history_section.dart';
 import '../features/learning/presentation/widgets/knowledge_base_library.dart';
+import '../features/learning/presentation/state/learner_settings_provider.dart';
 
 class DashboardScreen extends StatelessWidget {
   final Function(int)? onNavigateTab;
@@ -19,8 +20,14 @@ class DashboardScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<QuizProvider>(
       builder: (context, provider, child) {
-        final stats = provider.userStats;
         final history = context.watch<AttemptHistoryProvider>();
+        final learnerSettings = context.watch<LearnerSettingsProvider>();
+        final dailyGoal = learnerSettings.settings.dailyQuestionGoal;
+        final questionsToday = history.questionsCompletedToday;
+        final dailyGoalProgress = dailyGoal == 0
+            ? 0.0
+            : (questionsToday / dailyGoal).clamp(0.0, 1.0).toDouble();
+        final streakDays = history.currentStreakDays;
 
         return Scaffold(
           backgroundColor: AppColors.background,
@@ -104,7 +111,7 @@ class DashboardScreen extends StatelessWidget {
                           SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              'Knowledge bases, saved quizzes, accuracy, and attempt history are real. Level, daily goal, and streak are still sample data.',
+                              'Dashboard values are calculated from learning data stored privately on this device.',
                               style: TextStyle(fontSize: 12),
                             ),
                           ),
@@ -164,7 +171,8 @@ class DashboardScreen extends StatelessWidget {
                             icon: Icons.school,
                             iconColor: AppColors.primary,
                             label: 'Current Level',
-                            value: stats.level,
+                            value:
+                                '${learnerSettings.settings.cefrLevel} French',
                             bgColor: AppColors.primaryContainer.withValues(
                               alpha: 0.3,
                             ),
@@ -229,7 +237,9 @@ class DashboardScreen extends StatelessWidget {
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Text(
-                                  '${stats.streakDays} Day Streak!',
+                                  streakDays == 0
+                                      ? 'No streak yet'
+                                      : '$streakDays Day Streak!',
                                   style: const TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.bold,
@@ -253,7 +263,7 @@ class DashboardScreen extends StatelessWidget {
                           ClipRRect(
                             borderRadius: BorderRadius.circular(6),
                             child: LinearProgressIndicator(
-                              value: stats.dailyGoalPercent,
+                              value: dailyGoalProgress,
                               minHeight: 8,
                               backgroundColor: AppColors.surfaceVariant,
                               valueColor: const AlwaysStoppedAnimation<Color>(
@@ -265,7 +275,7 @@ class DashboardScreen extends StatelessWidget {
                           Align(
                             alignment: Alignment.centerRight,
                             child: Text(
-                              '${stats.dailyGoalCurrent} / ${stats.dailyGoalTarget} Questions',
+                              '$questionsToday / $dailyGoal Questions',
                               style: TextStyle(
                                 fontSize: 12,
                                 color: AppColors.onSurfaceVariant,

@@ -2,7 +2,7 @@ import 'package:path/path.dart' as path;
 import 'package:sqflite/sqflite.dart' as sqflite;
 
 class QuizDatabase {
-  static const schemaVersion = 1;
+  static const schemaVersion = 2;
   static const databaseName = 'quiz_moi.sqlite';
 
   final sqflite.Database connection;
@@ -12,6 +12,8 @@ class QuizDatabase {
   static Future<QuizDatabase> open({
     sqflite.DatabaseFactory? factory,
     String? databasePath,
+    // Used only by migration tests to create an older schema first.
+    int? schemaVersionOverride,
   }) async {
     final selectedFactory = factory ?? sqflite.databaseFactory;
     final selectedPath =
@@ -20,7 +22,7 @@ class QuizDatabase {
     final connection = await selectedFactory.openDatabase(
       selectedPath,
       options: sqflite.OpenDatabaseOptions(
-        version: schemaVersion,
+        version: schemaVersionOverride ?? schemaVersion,
         onConfigure: (database) => database.execute('PRAGMA foreign_keys = ON'),
         onCreate: _createSchema,
         onUpgrade: _upgradeSchema,
@@ -153,6 +155,9 @@ class QuizDatabase {
         reminders_enabled INTEGER NOT NULL
       )
     ''');
+    if (version >= 2) {
+      await _createVersion2Indexes(database);
+    }
   }
 
   static Future<void> _upgradeSchema(
@@ -162,6 +167,25 @@ class QuizDatabase {
   ) async {
     if (oldVersion < 1) {
       await _createSchema(database, newVersion);
+      return;
     }
+    if (oldVersion < 2) {
+      await _createVersion2Indexes(database);
+    }
+  }
+
+  static Future<void> _createVersion2Indexes(sqflite.Database database) async {
+    await database.execute('''
+      CREATE INDEX IF NOT EXISTS idx_knowledge_bases_archive_updated
+      ON knowledge_bases(is_archived, updated_at DESC)
+    ''');
+    await database.execute('''
+      CREATE INDEX IF NOT EXISTS idx_quizzes_knowledge_base
+      ON quizzes(knowledge_base_id)
+    ''');
+    await database.execute('''
+      CREATE INDEX IF NOT EXISTS idx_attempts_status_completed
+      ON quiz_attempts(status, completed_at DESC)
+    ''');
   }
 }

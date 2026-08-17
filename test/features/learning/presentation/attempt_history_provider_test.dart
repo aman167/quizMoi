@@ -67,6 +67,43 @@ void main() {
     expect(provider.accuracyPercent, 0);
   });
 
+  test('calculates a consecutive streak ending yesterday', () async {
+    final now = DateTime(2026, 8, 17, 15);
+    final provider = AttemptHistoryProvider(
+      attemptRepository: MemoryAttemptRepository(
+        initialAttempts: [
+          _attempt(
+            id: 'august-16',
+            status: AttemptStatus.completed,
+            completedAt: DateTime(2026, 8, 16, 18),
+            answers: const {'question-1': 'a'},
+          ),
+          _attempt(
+            id: 'august-15',
+            status: AttemptStatus.completed,
+            completedAt: DateTime(2026, 8, 15, 18),
+            answers: const {'question-1': 'a'},
+          ),
+          _attempt(
+            id: 'august-13',
+            status: AttemptStatus.completed,
+            completedAt: DateTime(2026, 8, 13, 18),
+            answers: const {'question-1': 'a'},
+          ),
+        ],
+      ),
+      quizRepository: MemoryQuizRepository(
+        initialQuizzes: [_quiz('quiz-1', 'Travel French', now, 2)],
+      ),
+      now: () => now,
+    );
+
+    await provider.load();
+
+    expect(provider.currentStreakDays, 2);
+    expect(provider.questionsCompletedToday, 0);
+  });
+
   testWidgets('shows a completed attempt and its score', (tester) async {
     final now = DateTime(2026, 8, 17, 15);
     final provider = AttemptHistoryProvider(

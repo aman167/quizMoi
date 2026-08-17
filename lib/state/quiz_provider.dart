@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import '../models/quiz_model.dart';
-import '../models/user_stats_model.dart';
 import '../features/learning/domain/entities/learning_entities.dart'
     as learning;
 import '../features/learning/domain/repositories/attempt_repository.dart';
@@ -19,16 +18,6 @@ class QuizProvider extends ChangeNotifier {
     DateTime Function()? now,
   }) : _now = now ?? DateTime.now;
 
-  final UserStats _userStats = UserStats(
-    name: 'User',
-    level: 'B1 French',
-    xp: 1240,
-    averageScore: 82.5,
-    dailyGoalCurrent: 30,
-    dailyGoalTarget: 40,
-    streakDays: 3,
-  );
-
   Quiz? _currentQuiz;
   int _currentQuestionIndex = 0;
   int _elapsedSeconds = 0;
@@ -41,7 +30,6 @@ class QuizProvider extends ChangeNotifier {
   int _attemptCounter = 0;
   bool _completionReported = false;
 
-  UserStats get userStats => _userStats;
   Quiz? get currentQuiz => _currentQuiz;
   int get currentQuestionIndex => _currentQuestionIndex;
   int get elapsedSeconds => _elapsedSeconds;

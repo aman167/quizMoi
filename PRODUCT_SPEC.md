@@ -69,14 +69,15 @@ The interface should assume the learner may be new to both French study systems 
 
 ## Current demo-mode contract
 
-The current application is a UI prototype. Until the real generation and persistence layers are connected:
+The local learning core is persistent, but content ingestion and AI generation remain prototypes:
 
-- sample knowledge bases, statistics, questions, and explanations are demo data;
+- knowledge bases, learner settings, manual quizzes, attempts, and Dashboard statistics are real local data;
+- questions and explanations reached through **Try Demo Quiz** are explicitly sample content;
 - the content field does not generate source-specific questions;
 - the primary action is labelled **Try Demo Quiz**;
 - unavailable controls must explain that they are planned instead of failing silently;
 - the Stats screen must show an empty state when no quiz exists instead of inventing results;
-- restarting or leaving a quiz must warn that in-memory answers will be cleared.
+- saved manual-quiz sessions must remain resumable, while restart and abandonment require confirmation.
 
 ## Deferred beyond version 1
 
