@@ -10,10 +10,14 @@ import '../features/learning/domain/repositories/quiz_repository.dart';
 
 class QuizProvider extends ChangeNotifier {
   final AttemptRepository? attemptRepository;
+  final Future<void> Function()? onAttemptCompleted;
   final DateTime Function() _now;
 
-  QuizProvider({this.attemptRepository, DateTime Function()? now})
-    : _now = now ?? DateTime.now;
+  QuizProvider({
+    this.attemptRepository,
+    this.onAttemptCompleted,
+    DateTime Function()? now,
+  }) : _now = now ?? DateTime.now;
 
   final UserStats _userStats = UserStats(
     name: 'User',
@@ -62,6 +66,7 @@ class QuizProvider extends ChangeNotifier {
   final Map<String, DateTime> _answerTimes = {};
   Future<void> _writeQueue = Future.value();
   int _attemptCounter = 0;
+  bool _completionReported = false;
 
   UserStats get userStats => _userStats;
   List<KnowledgeBase> get knowledgeBases => _knowledgeBases;
@@ -257,6 +262,7 @@ class QuizProvider extends ChangeNotifier {
     _currentQuestionIndex = 0;
     _elapsedSeconds = 0;
     _quizCompleted = false;
+    _completionReported = false;
   }
 
   void selectOption(String optionId) {
@@ -340,9 +346,14 @@ class QuizProvider extends ChangeNotifier {
       startedAt: startedAt,
       completedAt: _quizCompleted ? now : null,
     );
-    _writeQueue = _writeQueue
-        .catchError((_) {})
-        .then((_) => repository.save(attempt));
+    _writeQueue = _writeQueue.catchError((_) {}).then((_) async {
+      await repository.save(attempt);
+      if (attempt.status == learning.AttemptStatus.completed &&
+          !_completionReported) {
+        _completionReported = true;
+        await onAttemptCompleted?.call();
+      }
+    });
     return _writeQueue;
   }
 
@@ -418,6 +429,7 @@ class QuizProvider extends ChangeNotifier {
     _activeAttemptId = null;
     _attemptStartedAt = null;
     _answerTimes.clear();
+    _completionReported = false;
   }
 
   void incrementTimer() {

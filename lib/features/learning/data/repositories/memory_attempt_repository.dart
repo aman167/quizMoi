@@ -24,6 +24,20 @@ class MemoryAttemptRepository implements AttemptRepository {
   }
 
   @override
+  Future<List<QuizAttempt>> getCompleted() async {
+    final attempts =
+        _attempts.values
+            .where((attempt) => attempt.status == AttemptStatus.completed)
+            .toList()
+          ..sort(
+            (a, b) => (b.completedAt ?? b.startedAt).compareTo(
+              a.completedAt ?? a.startedAt,
+            ),
+          );
+    return attempts;
+  }
+
+  @override
   Future<QuizAttempt?> getLatestInProgress() async {
     final attempts =
         _attempts.values

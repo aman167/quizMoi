@@ -7,6 +7,8 @@ import '../widgets/knowledge_base_card.dart';
 import 'upload_content_screen.dart';
 import 'active_testing_screen.dart';
 import '../features/learning/presentation/widgets/saved_quiz_library.dart';
+import '../features/learning/presentation/state/attempt_history_provider.dart';
+import '../features/learning/presentation/widgets/attempt_history_section.dart';
 
 class DashboardScreen extends StatelessWidget {
   final Function(int)? onNavigateTab;
@@ -19,6 +21,7 @@ class DashboardScreen extends StatelessWidget {
       builder: (context, provider, child) {
         final stats = provider.userStats;
         final kbs = provider.knowledgeBases;
+        final history = context.watch<AttemptHistoryProvider>();
 
         return Scaffold(
           backgroundColor: AppColors.background,
@@ -102,7 +105,7 @@ class DashboardScreen extends StatelessWidget {
                           SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              'Demo mode: dashboard statistics and knowledge bases are sample data.',
+                              'Saved quizzes, accuracy, and attempt history are real. Level, daily goal, streak, and knowledge bases are still sample data.',
                               style: TextStyle(fontSize: 12),
                             ),
                           ),
@@ -176,8 +179,10 @@ class DashboardScreen extends StatelessWidget {
                           child: BentoStatCard(
                             icon: Icons.trending_up,
                             iconColor: AppColors.successMint,
-                            label: 'Average Score',
-                            value: '${stats.averageScore}%',
+                            label: 'Real Accuracy',
+                            value: history.entries.isEmpty
+                                ? '—'
+                                : '${history.accuracyPercent.toStringAsFixed(1)}%',
                             bgColor: AppColors.successMint.withValues(
                               alpha: 0.1,
                             ),
@@ -274,6 +279,9 @@ class DashboardScreen extends StatelessWidget {
                     const SizedBox(height: 24),
 
                     const SavedQuizLibrary(),
+                    const SizedBox(height: 24),
+
+                    const AttemptHistorySection(),
                     const SizedBox(height: 24),
 
                     // Section Title

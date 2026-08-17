@@ -30,6 +30,17 @@ class SqliteAttemptRepository implements AttemptRepository {
   }
 
   @override
+  Future<List<QuizAttempt>> getCompleted() async {
+    final rows = await database.connection.query(
+      'quiz_attempts',
+      where: 'status = ?',
+      whereArgs: [AttemptStatus.completed.name],
+      orderBy: 'completed_at DESC',
+    );
+    return Future.wait(rows.map(_attemptFromRow));
+  }
+
+  @override
   Future<QuizAttempt?> getLatestInProgress() async {
     final rows = await database.connection.query(
       'quiz_attempts',

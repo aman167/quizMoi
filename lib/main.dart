@@ -9,9 +9,11 @@ import 'screens/results_feedback_screen.dart';
 import 'features/learning/data/local/quiz_database.dart';
 import 'features/learning/data/repositories/sqlite_quiz_repository.dart';
 import 'features/learning/data/repositories/sqlite_attempt_repository.dart';
+import 'features/learning/data/repositories/memory_attempt_repository.dart';
 import 'features/learning/domain/repositories/attempt_repository.dart';
 import 'features/learning/domain/repositories/quiz_repository.dart';
 import 'features/learning/presentation/state/saved_quiz_provider.dart';
+import 'features/learning/presentation/state/attempt_history_provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -36,12 +38,21 @@ class QuizMoiApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final effectiveAttemptRepository =
+        attemptRepository ?? MemoryAttemptRepository();
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(
-          create: (_) =>
-              QuizProvider(attemptRepository: attemptRepository)
-                ..restoreInProgress(quizRepository),
+          create: (_) => AttemptHistoryProvider(
+            attemptRepository: effectiveAttemptRepository,
+            quizRepository: quizRepository,
+          )..load(),
+        ),
+        ChangeNotifierProvider(
+          create: (context) => QuizProvider(
+            attemptRepository: attemptRepository,
+            onAttemptCompleted: context.read<AttemptHistoryProvider>().load,
+          )..restoreInProgress(quizRepository),
         ),
         ChangeNotifierProvider(
           create: (_) => SavedQuizProvider(quizRepository)..load(),

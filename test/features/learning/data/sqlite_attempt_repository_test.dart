@@ -63,6 +63,33 @@ void main() {
     );
     expect(rows.single['count'], 0);
   });
+
+  test(
+    'returns completed attempts newest first and excludes progress',
+    () async {
+      final inProgress = _attempt(startedAt);
+      final older = inProgress.copyWith(
+        id: 'attempt-older',
+        status: AttemptStatus.completed,
+        completedAt: startedAt.add(const Duration(minutes: 1)),
+      );
+      final newer = inProgress.copyWith(
+        id: 'attempt-newer',
+        status: AttemptStatus.completed,
+        completedAt: startedAt.add(const Duration(minutes: 2)),
+      );
+      await repository.save(inProgress);
+      await repository.save(older);
+      await repository.save(newer);
+
+      final completed = await repository.getCompleted();
+
+      expect(completed.map((attempt) => attempt.id), [
+        'attempt-newer',
+        'attempt-older',
+      ]);
+    },
+  );
 }
 
 QuizAttempt _attempt(DateTime startedAt) => QuizAttempt(

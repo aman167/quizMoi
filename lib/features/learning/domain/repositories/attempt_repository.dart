@@ -5,6 +5,8 @@ abstract interface class AttemptRepository {
 
   Future<List<QuizAttempt>> getForQuiz(String quizId);
 
+  Future<List<QuizAttempt>> getCompleted();
+
   Future<void> save(QuizAttempt attempt);
 
   Future<void> delete(String id);

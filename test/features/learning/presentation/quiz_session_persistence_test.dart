@@ -42,7 +42,14 @@ void main() {
   test('persists progress, completion, and a saved-quiz retake', () async {
     final now = DateTime.utc(2026, 8, 17, 14);
     final attempts = MemoryAttemptRepository();
-    final provider = QuizProvider(attemptRepository: attempts, now: () => now);
+    var historyRefreshes = 0;
+    final provider = QuizProvider(
+      attemptRepository: attempts,
+      now: () => now,
+      onAttemptCompleted: () async {
+        historyRefreshes++;
+      },
+    );
     final quiz = _quiz(now);
 
     provider.startSavedQuiz(quiz);
@@ -57,6 +64,7 @@ void main() {
     final completed = await attempts.getForQuiz(quiz.id);
     expect(completed.single.status, AttemptStatus.completed);
     expect(completed.single.answers, hasLength(2));
+    expect(historyRefreshes, 1);
 
     provider.retakeCurrentQuiz();
     await provider.persistSession();

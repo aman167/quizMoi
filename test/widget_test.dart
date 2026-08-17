@@ -18,6 +18,7 @@ import 'package:quiz_moi_app/features/learning/data/repositories/memory_quiz_rep
 import 'package:quiz_moi_app/features/learning/data/repositories/memory_attempt_repository.dart';
 import 'package:quiz_moi_app/features/learning/domain/entities/learning_entities.dart';
 import 'package:quiz_moi_app/features/learning/presentation/state/saved_quiz_provider.dart';
+import 'package:quiz_moi_app/features/learning/presentation/state/attempt_history_provider.dart';
 
 Widget _testApp(
   QuizProvider provider,
@@ -28,10 +29,15 @@ Widget _testApp(
   final savedProvider =
       savedQuizProvider ?? SavedQuizProvider(MemoryQuizRepository())
         ..load();
+  final historyProvider = AttemptHistoryProvider(
+    attemptRepository: MemoryAttemptRepository(),
+    quizRepository: savedProvider.repository,
+  )..load();
   return MultiProvider(
     providers: [
       ChangeNotifierProvider.value(value: provider),
       ChangeNotifierProvider.value(value: savedProvider),
+      ChangeNotifierProvider.value(value: historyProvider),
     ],
     child: MaterialApp(
       builder: (context, child) => MediaQuery(
