@@ -8,11 +8,11 @@ class KnowledgeBaseCard extends StatelessWidget {
   final VoidCallback onTestMe;
 
   const KnowledgeBaseCard({
-    Key? key,
+    super.key,
     required this.knowledgeBase,
     required this.onReview,
     required this.onTestMe,
-  }) : super(key: key);
+  });
 
   IconData _getIconData(String iconName) {
     switch (iconName) {
@@ -35,11 +35,11 @@ class KnowledgeBaseCard extends StatelessWidget {
         color: AppColors.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: AppColors.outlineVariant.withOpacity(0.4),
+          color: AppColors.outlineVariant.withValues(alpha: 0.4),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -84,7 +84,9 @@ class KnowledgeBaseCard extends StatelessWidget {
                       children: [
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 2),
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
                             color: AppColors.surfaceContainerHigh,
                             borderRadius: BorderRadius.circular(6),
@@ -102,14 +104,18 @@ class KnowledgeBaseCard extends StatelessWidget {
                           '• ${knowledgeBase.questionCount} questions',
                           style: TextStyle(
                             fontSize: 11,
-                            color: AppColors.onSurfaceVariant.withOpacity(0.8),
+                            color: AppColors.onSurfaceVariant.withValues(
+                              alpha: 0.8,
+                            ),
                           ),
                         ),
                         Text(
                           '• Created ${knowledgeBase.createdDate}',
                           style: TextStyle(
                             fontSize: 11,
-                            color: AppColors.onSurfaceVariant.withOpacity(0.8),
+                            color: AppColors.onSurfaceVariant.withValues(
+                              alpha: 0.8,
+                            ),
                           ),
                         ),
                       ],

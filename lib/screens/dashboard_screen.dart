@@ -10,7 +10,7 @@ import 'active_testing_screen.dart';
 class DashboardScreen extends StatelessWidget {
   final Function(int)? onNavigateTab;
 
-  const DashboardScreen({Key? key, this.onNavigateTab}) : super(key: key);
+  const DashboardScreen({super.key, this.onNavigateTab});
 
   @override
   Widget build(BuildContext context) {
@@ -22,11 +22,17 @@ class DashboardScreen extends StatelessWidget {
         return Scaffold(
           backgroundColor: AppColors.background,
           appBar: AppBar(
-            backgroundColor: AppColors.surface.withOpacity(0.8),
+            backgroundColor: AppColors.surface.withValues(alpha: 0.8),
             elevation: 0,
             leading: IconButton(
               icon: const Icon(Icons.menu, color: AppColors.onSurfaceVariant),
-              onPressed: () {},
+              onPressed: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('The app menu is planned for a later phase.'),
+                  ),
+                );
+              },
             ),
             title: const Text(
               'quizMoi',
@@ -65,7 +71,8 @@ class DashboardScreen extends StatelessWidget {
                     // Header
                     Text(
                       'Quiz Dashboard',
-                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      style: Theme.of(context).textTheme.headlineMedium
+                          ?.copyWith(
                             color: AppColors.onSurface,
                             fontWeight: FontWeight.bold,
                           ),
@@ -89,8 +96,12 @@ class DashboardScreen extends StatelessWidget {
                             iconColor: AppColors.primary,
                             label: 'Current Level',
                             value: stats.level,
-                            bgColor: AppColors.primaryContainer.withOpacity(0.3),
-                            borderColor: AppColors.primaryContainer.withOpacity(0.5),
+                            bgColor: AppColors.primaryContainer.withValues(
+                              alpha: 0.3,
+                            ),
+                            borderColor: AppColors.primaryContainer.withValues(
+                              alpha: 0.5,
+                            ),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -100,8 +111,12 @@ class DashboardScreen extends StatelessWidget {
                             iconColor: AppColors.successMint,
                             label: 'Average Score',
                             value: '${stats.averageScore}%',
-                            bgColor: AppColors.successMint.withOpacity(0.1),
-                            borderColor: AppColors.successMint.withOpacity(0.2),
+                            bgColor: AppColors.successMint.withValues(
+                              alpha: 0.1,
+                            ),
+                            borderColor: AppColors.successMint.withValues(
+                              alpha: 0.2,
+                            ),
                           ),
                         ),
                       ],
@@ -112,10 +127,14 @@ class DashboardScreen extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: AppColors.secondaryContainer.withOpacity(0.3),
+                        color: AppColors.secondaryContainer.withValues(
+                          alpha: 0.3,
+                        ),
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: AppColors.secondaryContainer.withOpacity(0.5),
+                          color: AppColors.secondaryContainer.withValues(
+                            alpha: 0.5,
+                          ),
                         ),
                       ),
                       child: Column(
@@ -131,7 +150,9 @@ class DashboardScreen extends StatelessWidget {
                               ),
                               Container(
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 10, vertical: 4),
+                                  horizontal: 10,
+                                  vertical: 4,
+                                ),
                                 decoration: BoxDecoration(
                                   color: AppColors.secondaryContainer,
                                   borderRadius: BorderRadius.circular(12),
@@ -180,7 +201,6 @@ class DashboardScreen extends StatelessWidget {
                               ),
                             ),
                           ),
-
                         ],
                       ),
                     ),

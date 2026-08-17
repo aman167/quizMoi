@@ -5,7 +5,7 @@ import '../state/quiz_provider.dart';
 import 'active_testing_screen.dart';
 
 class UploadContentScreen extends StatefulWidget {
-  const UploadContentScreen({Key? key}) : super(key: key);
+  const UploadContentScreen({super.key});
 
   @override
   State<UploadContentScreen> createState() => _UploadContentScreenState();
@@ -15,6 +15,12 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
   int _selectedTab = 0; // 0: Quiz, 1: Flashcards, 2: Notes
   bool _optionsExpanded = false;
   final TextEditingController _textController = TextEditingController();
+
+  void _showComingSoon(String feature) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('$feature is planned for a later phase.')),
+    );
+  }
 
   @override
   void dispose() {
@@ -27,11 +33,11 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: AppColors.surface.withOpacity(0.8),
+        backgroundColor: AppColors.surface.withValues(alpha: 0.8),
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.menu, color: AppColors.onSurfaceVariant),
-          onPressed: () {},
+          onPressed: () => _showComingSoon('The app menu'),
         ),
         title: const Text(
           'quizMoi',
@@ -84,18 +90,15 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
             Text(
               'Create Quiz',
               style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    color: AppColors.onBackground,
-                    fontWeight: FontWeight.bold,
-                  ),
+                color: AppColors.onBackground,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 4),
             Text(
               'Generate AI-powered quizzes from your content',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
-                color: AppColors.onSurfaceVariant,
-              ),
+              style: TextStyle(fontSize: 14, color: AppColors.onSurfaceVariant),
             ),
             const SizedBox(height: 20),
 
@@ -106,7 +109,7 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
                 color: AppColors.surfaceContainerLow,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: AppColors.outlineVariant.withOpacity(0.3),
+                  color: AppColors.outlineVariant.withValues(alpha: 0.3),
                 ),
               ),
               child: Row(
@@ -126,11 +129,11 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
                 color: AppColors.surface,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: AppColors.outlineVariant.withOpacity(0.4),
+                  color: AppColors.outlineVariant.withValues(alpha: 0.4),
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
+                    color: Colors.black.withValues(alpha: 0.04),
                     blurRadius: 16,
                     offset: const Offset(0, 4),
                   ),
@@ -152,9 +155,11 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
                     ),
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 12),
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
                       decoration: BoxDecoration(
-                        color: AppColors.primaryFixed.withOpacity(0.3),
+                        color: AppColors.primaryFixed.withValues(alpha: 0.3),
                         borderRadius: const BorderRadius.only(
                           topLeft: Radius.circular(16),
                           topRight: Radius.circular(16),
@@ -204,12 +209,18 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
                   // Manual Creation Banner
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 10),
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
                     decoration: BoxDecoration(
-                      color: AppColors.surfaceContainerHigh.withOpacity(0.5),
+                      color: AppColors.surfaceContainerHigh.withValues(
+                        alpha: 0.5,
+                      ),
                       border: Border(
                         bottom: BorderSide(
-                          color: AppColors.outlineVariant.withOpacity(0.3),
+                          color: AppColors.outlineVariant.withValues(
+                            alpha: 0.3,
+                          ),
                         ),
                       ),
                     ),
@@ -231,7 +242,8 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
                           ),
                         ),
                         TextButton(
-                          onPressed: () {},
+                          onPressed: () =>
+                              _showComingSoon('Manual quiz creation'),
                           style: TextButton.styleFrom(
                             padding: EdgeInsets.zero,
                             minimumSize: Size.zero,
@@ -287,8 +299,9 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
                                     'Paste text, enter a URL, YouTube video link, type a topic, or describe what you want to quiz about... (You can also paste or upload up to 10 images)',
                                 hintStyle: TextStyle(
                                   fontSize: 13,
-                                  color: AppColors.onSurfaceVariant
-                                      .withOpacity(0.6),
+                                  color: AppColors.onSurfaceVariant.withValues(
+                                    alpha: 0.6,
+                                  ),
                                 ),
                                 filled: true,
                                 fillColor: AppColors.surfaceContainerLow,
@@ -312,7 +325,11 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
                                   ),
                                 ),
                                 contentPadding: const EdgeInsets.fromLTRB(
-                                    14, 14, 14, 50),
+                                  14,
+                                  14,
+                                  14,
+                                  50,
+                                ),
                               ),
                             ),
                             Positioned(
@@ -348,12 +365,15 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
                         ),
                         const SizedBox(height: 8),
                         _buildTipItem(
-                            'Type or paste any text content (e.g., French literature excerpts)'),
+                          'Type or paste any text content (e.g., French literature excerpts)',
+                        ),
                         _buildTipItem(
-                            'Paste YouTube video URLs or web page URLs'),
+                          'Paste YouTube video URLs or web page URLs',
+                        ),
                         _buildTipItem('Upload documents or PDFs (Max 15MB)'),
                         _buildTipItem(
-                            'Enter a broad topic for AI-generated content (e.g., "Passé Composé vs Imparfait")'),
+                          'Enter a broad topic for AI-generated content (e.g., "Passé Composé vs Imparfait")',
+                        ),
 
                         const SizedBox(height: 24),
 
@@ -362,9 +382,17 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
                           width: double.infinity,
                           child: ElevatedButton.icon(
                             onPressed: () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'AI generation is not connected yet. Starting the demo quiz.',
+                                  ),
+                                ),
+                              );
                               final provider = Provider.of<QuizProvider>(
-                                  context,
-                                  listen: false);
+                                context,
+                                listen: false,
+                              );
                               provider.startQuiz('custom');
                               Navigator.push(
                                 context,
@@ -375,7 +403,7 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
                               );
                             },
                             icon: const Text(
-                              'Generate Quiz',
+                              'Try Demo Quiz',
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
@@ -409,6 +437,10 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
     final isActive = _selectedTab == index;
     return GestureDetector(
       onTap: () {
+        if (index != 0) {
+          _showComingSoon(label);
+          return;
+        }
         setState(() {
           _selectedTab = index;
         });
@@ -454,13 +486,13 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
         color: AppColors.surface,
         shape: BoxShape.circle,
         border: Border.all(
-          color: AppColors.outlineVariant.withOpacity(0.5),
+          color: AppColors.outlineVariant.withValues(alpha: 0.5),
         ),
       ),
       child: IconButton(
         icon: Icon(icon, size: 18, color: AppColors.onSurface),
         padding: EdgeInsets.zero,
-        onPressed: () {},
+        onPressed: () => _showComingSoon(tooltip),
         tooltip: tooltip,
       ),
     );
@@ -484,7 +516,7 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
               tipText,
               style: TextStyle(
                 fontSize: 13,
-                color: AppColors.onSurfaceVariant.withOpacity(0.8),
+                color: AppColors.onSurfaceVariant.withValues(alpha: 0.8),
               ),
             ),
           ),

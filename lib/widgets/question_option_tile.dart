@@ -8,11 +8,11 @@ class QuestionOptionTile extends StatelessWidget {
   final VoidCallback onTap;
 
   const QuestionOptionTile({
-    Key? key,
+    super.key,
     required this.option,
     required this.isSelected,
     required this.onTap,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -20,7 +20,7 @@ class QuestionOptionTile extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       child: Material(
         color: isSelected
-            ? AppColors.primary.withOpacity(0.05)
+            ? AppColors.primary.withValues(alpha: 0.05)
             : AppColors.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(12),
         child: InkWell(
@@ -32,7 +32,9 @@ class QuestionOptionTile extends StatelessWidget {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: isSelected ? AppColors.primary : AppColors.outlineVariant,
+                color: isSelected
+                    ? AppColors.primary
+                    : AppColors.outlineVariant,
                 width: isSelected ? 2 : 1,
               ),
             ),
@@ -50,9 +52,7 @@ class QuestionOptionTile extends StatelessWidget {
                     color: isSelected ? AppColors.primary : Colors.transparent,
                   ),
                   child: isSelected
-                      ? const Center(
-                          child: ContainerCircle(),
-                        )
+                      ? const Center(child: ContainerCircle())
                       : null,
                 ),
                 const SizedBox(width: 14),
@@ -61,8 +61,12 @@ class QuestionOptionTile extends StatelessWidget {
                     option.text,
                     style: TextStyle(
                       fontSize: 15,
-                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                      color: isSelected ? AppColors.primary : AppColors.onSurface,
+                      fontWeight: isSelected
+                          ? FontWeight.w600
+                          : FontWeight.w400,
+                      color: isSelected
+                          ? AppColors.primary
+                          : AppColors.onSurface,
                     ),
                   ),
                 ),
@@ -76,7 +80,7 @@ class QuestionOptionTile extends StatelessWidget {
 }
 
 class ContainerCircle extends StatelessWidget {
-  const ContainerCircle({Key? key}) : super(key: key);
+  const ContainerCircle({super.key});
 
   @override
   Widget build(BuildContext context) {

@@ -12,7 +12,7 @@ void main() {
 }
 
 class QuizMoiApp extends StatelessWidget {
-  const QuizMoiApp({Key? key}) : super(key: key);
+  const QuizMoiApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -29,7 +29,7 @@ class QuizMoiApp extends StatelessWidget {
 }
 
 class MainNavigationContainer extends StatefulWidget {
-  const MainNavigationContainer({Key? key}) : super(key: key);
+  const MainNavigationContainer({super.key});
 
   @override
   State<MainNavigationContainer> createState() =>
@@ -55,10 +55,7 @@ class _MainNavigationContainerState extends State<MainNavigationContainer> {
     ];
 
     return Scaffold(
-      body: IndexedStack(
-        index: _currentTabIndex,
-        children: screens,
-      ),
+      body: IndexedStack(index: _currentTabIndex, children: screens),
       bottomNavigationBar: MobileBottomNav(
         currentIndex: _currentTabIndex,
         onTap: (index) {
@@ -72,7 +69,7 @@ class _MainNavigationContainerState extends State<MainNavigationContainer> {
 }
 
 class PlaceholderAccountScreen extends StatelessWidget {
-  const PlaceholderAccountScreen({Key? key}) : super(key: key);
+  const PlaceholderAccountScreen({super.key});
 
   @override
   Widget build(BuildContext context) {

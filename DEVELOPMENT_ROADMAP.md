@@ -18,6 +18,8 @@ Audit date: 2026-08-16
 
 Phase 0 completion evidence: the project is stored in a private GitHub repository, the Windows Flutter/Android toolchain and emulator are configured, the application runs on the Android emulator, the setup process is documented in `README.md`, the existing automated test passes, and a clean debug APK build succeeds. Physical-device coverage remains part of private-beta validation.
 
+Phase 1 progress: all analyzer findings have been cleared; quizzes start at zero; unanswered questions cannot advance; restart and exit actions require confirmation; missing results show an honest empty state; unfinished controls explain that they are planned; and provider/widget coverage has expanded to eight passing tests.
+
 ## Product direction
 
 quizMoi will remain privately distributed while it is developed into a reliable Android-first French active-recall application. The first complete product should let one learner import useful material, generate and edit a quiz, complete it, receive trustworthy feedback, and return later to review saved progress.
@@ -42,17 +44,12 @@ The roadmap deliberately prioritizes a narrow working learning loop before addin
 - Flashcards and Notes are advertised but do not have separate product flows.
 - Question models mention fill-in-the-blank and translation, but the testing UI only supports selectable options.
 - No local persistence, quiz history, settings, account system, backend, network client, AI service, or error/loading states exist.
-- Results can show demo values when no quiz exists, and unanswered questions can produce inconsistent result messaging.
-- The timer starts at 12m 45s instead of zero.
-- There is no confirmation before abandoning or restarting a quiz.
-- The README is still the default Flutter template.
-
 ### Verification findings
 
-- `flutter test`: passes 1 of 1 test.
-- `flutter analyze`: 68 findings, mostly deprecations/style issues and one unused-import warning.
-- Android APK build: blocked because an Android SDK is not installed or configured.
-- The project directory is not a Git repository, so it has no local history or rollback protection.
+- `flutter test`: 8 tests pass.
+- `flutter analyze`: no issues found.
+- Android APK build: `flutter build apk --debug` succeeds.
+- Git/GitHub: private repository configured with development branches and pull requests.
 - Android still uses a prototype application ID/label, default launcher assets, and debug signing for release builds.
 
 ## Target version 1 scope

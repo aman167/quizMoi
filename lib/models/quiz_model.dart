@@ -58,6 +58,11 @@ class Quiz {
 
   int get correctCount => questions.where((q) => q.isCorrect).length;
 
+  int get incorrectCount =>
+      questions.where((q) => q.isAnswered && !q.isCorrect).length;
+
+  int get unansweredCount => totalQuestions - answeredCount;
+
   double get scorePercent =>
       totalQuestions == 0 ? 0 : (correctCount / totalQuestions) * 100;
 

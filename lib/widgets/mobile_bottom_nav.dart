@@ -6,10 +6,10 @@ class MobileBottomNav extends StatelessWidget {
   final ValueChanged<int> onTap;
 
   const MobileBottomNav({
-    Key? key,
+    super.key,
     required this.currentIndex,
     required this.onTap,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -19,7 +19,7 @@ class MobileBottomNav extends StatelessWidget {
         color: AppColors.surfaceContainer,
         border: Border(
           top: BorderSide(
-            color: AppColors.outlineVariant.withOpacity(0.3),
+            color: AppColors.outlineVariant.withValues(alpha: 0.3),
             width: 1,
           ),
         ),
@@ -27,26 +27,10 @@ class MobileBottomNav extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _buildNavItem(
-            index: 0,
-            icon: Icons.auto_stories,
-            label: 'Learn',
-          ),
-          _buildNavItem(
-            index: 1,
-            icon: Icons.history_edu,
-            label: 'Review',
-          ),
-          _buildNavItem(
-            index: 2,
-            icon: Icons.insert_chart,
-            label: 'Stats',
-          ),
-          _buildNavItem(
-            index: 3,
-            icon: Icons.account_circle,
-            label: 'Account',
-          ),
+          _buildNavItem(index: 0, icon: Icons.auto_stories, label: 'Learn'),
+          _buildNavItem(index: 1, icon: Icons.history_edu, label: 'Review'),
+          _buildNavItem(index: 2, icon: Icons.insert_chart, label: 'Stats'),
+          _buildNavItem(index: 3, icon: Icons.account_circle, label: 'Account'),
         ],
       ),
     );
@@ -71,11 +55,7 @@ class MobileBottomNav extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                icon,
-                color: AppColors.onSecondaryContainer,
-                size: 22,
-              ),
+              Icon(icon, color: AppColors.onSecondaryContainer, size: 22),
               const SizedBox(height: 2),
               Text(
                 label,
@@ -99,11 +79,7 @@ class MobileBottomNav extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              icon,
-              color: AppColors.onSurfaceVariant,
-              size: 22,
-            ),
+            Icon(icon, color: AppColors.onSurfaceVariant, size: 22),
             const SizedBox(height: 2),
             Text(
               label,

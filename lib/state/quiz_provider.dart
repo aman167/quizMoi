@@ -3,7 +3,7 @@ import '../models/quiz_model.dart';
 import '../models/user_stats_model.dart';
 
 class QuizProvider extends ChangeNotifier {
-  UserStats _userStats = UserStats(
+  final UserStats _userStats = UserStats(
     name: 'User',
     level: 'B1 French',
     xp: 1240,
@@ -13,7 +13,7 @@ class QuizProvider extends ChangeNotifier {
     streakDays: 3,
   );
 
-  List<KnowledgeBase> _knowledgeBases = [
+  final List<KnowledgeBase> _knowledgeBases = [
     KnowledgeBase(
       id: 'kb1',
       title: 'French History Revolution PDF',
@@ -51,9 +51,11 @@ class QuizProvider extends ChangeNotifier {
   int get currentQuestionIndex => _currentQuestionIndex;
   int get elapsedSeconds => _elapsedSeconds;
   bool get quizCompleted => _quizCompleted;
+  bool get canAdvance => currentQuestion?.isAnswered ?? false;
 
   QuizQuestion? get currentQuestion {
-    if (_currentQuiz == null || _currentQuestionIndex >= _currentQuiz!.questions.length) {
+    if (_currentQuiz == null ||
+        _currentQuestionIndex >= _currentQuiz!.questions.length) {
       return null;
     }
     return _currentQuiz!.questions[_currentQuestionIndex];
@@ -71,7 +73,7 @@ class QuizProvider extends ChangeNotifier {
   }
 
   void startQuiz(String knowledgeBaseId) {
-    List<QuizQuestion> questions = [
+    final questions = [
       QuizQuestion(
         number: 1,
         prompt: 'Quel est le synonyme de "quotidien" ?',
@@ -107,7 +109,8 @@ class QuizProvider extends ChangeNotifier {
       ),
       QuizQuestion(
         number: 4,
-        prompt: 'Dans le contexte de l\'article sur le changement climatique, que signifie l\'expression "passer au crible" ?',
+        prompt:
+            'Dans le contexte de l\'article sur le changement climatique, que signifie l\'expression "passer au crible" ?',
         options: [
           QuizOption(id: 'a', text: 'Ignorer complètement un problème.'),
           QuizOption(id: 'b', text: 'Examiner minutieusement et en détail.'),
@@ -192,25 +195,26 @@ class QuizProvider extends ChangeNotifier {
     );
 
     _currentQuestionIndex = 0;
-    _elapsedSeconds = 765;
+    _elapsedSeconds = 0;
     _quizCompleted = false;
     notifyListeners();
   }
 
   void selectOption(String optionId) {
-    if (_currentQuiz == null) return;
+    if (_currentQuiz == null || _quizCompleted) return;
     _currentQuiz!.questions[_currentQuestionIndex].selectedOptionId = optionId;
     notifyListeners();
   }
 
-  void nextQuestion() {
-    if (_currentQuiz == null) return;
+  bool nextQuestion() {
+    if (_currentQuiz == null || !canAdvance || _quizCompleted) return false;
     if (_currentQuestionIndex < _currentQuiz!.questions.length - 1) {
       _currentQuestionIndex++;
     } else {
       _quizCompleted = true;
     }
     notifyListeners();
+    return true;
   }
 
   void previousQuestion() {
@@ -230,6 +234,7 @@ class QuizProvider extends ChangeNotifier {
   }
 
   void incrementTimer() {
+    if (_currentQuiz == null || _quizCompleted) return;
     _elapsedSeconds++;
     notifyListeners();
   }
