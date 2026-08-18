@@ -11,11 +11,13 @@ class HttpQuizGenerationGateway implements QuizGenerationGateway {
   final Uri baseUri;
   final http.Client _client;
   final Duration timeout;
+  final Duration pdfTimeout;
 
   HttpQuizGenerationGateway({
     required String baseUrl,
     http.Client? client,
     this.timeout = const Duration(seconds: 50),
+    this.pdfTimeout = const Duration(seconds: 75),
   }) : baseUri = Uri.parse(baseUrl),
        _client = client ?? http.Client();
 
@@ -40,6 +42,58 @@ class HttpQuizGenerationGateway implements QuizGenerationGateway {
       throw const QuizGenerationException(
         'generation_timeout',
         'Quiz generation took too long. Your text is still here, so you can retry.',
+      );
+    } on http.ClientException {
+      throw const QuizGenerationException(
+        'backend_unavailable',
+        'The local quiz server is not reachable. Start it on your computer, then retry.',
+      );
+    } on FormatException {
+      throw const QuizGenerationException(
+        'invalid_generation',
+        'The server returned quiz data the app could not understand. Please retry.',
+      );
+    }
+  }
+
+  @override
+  Future<GeneratedQuizDraft> generatePdf(
+    PdfQuizGenerationRequest request,
+  ) async {
+    try {
+      final multipart =
+          http.MultipartRequest(
+              'POST',
+              baseUri.resolve('/v1/quizzes/generate-pdf'),
+            )
+            ..fields.addAll({
+              'schemaVersion': request.schemaVersion.toString(),
+              'sourceTitle': request.sourceTitle,
+              'cefrLevel': request.cefrLevel,
+              'difficulty': request.difficulty,
+              'questionCount': request.questionCount.toString(),
+              'questionTypes': 'multipleChoice',
+            })
+            ..files.add(
+              http.MultipartFile.fromBytes(
+                'file',
+                request.pdfBytes,
+                filename: request.fileName,
+              ),
+            );
+      final streamed = await _client.send(multipart).timeout(pdfTimeout);
+      final response = await http.Response.fromStream(streamed);
+      final body = _decodeObject(response.body);
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw _errorFromResponse(response.statusCode, body);
+      }
+      return _parseDraft(body);
+    } on QuizGenerationException {
+      rethrow;
+    } on TimeoutException {
+      throw const QuizGenerationException(
+        'generation_timeout',
+        'PDF quiz generation took too long. Your selected file is still available, so you can retry.',
       );
     } on http.ClientException {
       throw const QuizGenerationException(

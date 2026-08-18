@@ -32,6 +32,26 @@ class GenerateQuizRequest(ApiModel):
         return value
 
 
+class GeneratePdfQuizRequest(ApiModel):
+    schema_version: Literal[1] = Field(alias="schemaVersion")
+    source_title: str = Field(alias="sourceTitle", min_length=1, max_length=120)
+    cefr_level: Literal["A1", "A2", "B1", "B2", "C1", "C2"] = Field(
+        alias="cefrLevel"
+    )
+    difficulty: Literal["easy", "medium", "hard"]
+    question_count: int = Field(alias="questionCount", ge=5, le=15)
+    question_types: list[Literal["multipleChoice"]] = Field(
+        alias="questionTypes", min_length=1, max_length=1
+    )
+
+    @field_validator("question_types")
+    @classmethod
+    def only_one_multiple_choice_type(cls, value: list[str]) -> list[str]:
+        if value != ["multipleChoice"]:
+            raise ValueError("Phase 4 currently supports multiple-choice questions only.")
+        return value
+
+
 class GeneratedOption(ApiModel):
     id: Literal["a", "b", "c", "d"]
     text: str = Field(min_length=1, max_length=300)

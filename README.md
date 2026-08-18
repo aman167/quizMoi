@@ -9,14 +9,14 @@ The application is currently in private development. It is not published on the 
 The repository currently contains a persistent local learning core with:
 
 - a learner dashboard;
-- pasted-text preview and AI-generation screens;
+- pasted-text and Android PDF preview/AI-generation screens;
 - a timed multiple-choice quiz flow;
 - scoring with source-grounded explanations and concept feedback;
 - SQLite-backed sources, knowledge bases, quizzes, sessions, attempts, and settings;
 - a Python FastAPI generation backend with a versioned structured contract;
 - Android, iOS, web, and Windows platform scaffolding.
 
-The remaining offline demo quiz is explicitly separate from generated and saved learning data. PDF, web-article, and typed-answer breadth is scheduled in Phase 4; see [DEVELOPMENT_ROADMAP.md](DEVELOPMENT_ROADMAP.md).
+The remaining offline demo quiz is explicitly separate from generated and saved learning data. Phase 4's direct-PDF checkpoint has passed a real OpenAI emulator test through generation, local save, quiz completion, and app-restart persistence. Camera-captured study images are now explicitly planned as a later Phase 4 source journey but are not implemented yet. Web-article and typed-answer breadth also remains scheduled; interrupted-response recovery is tracked in [DEFECT_LOG.md](DEFECT_LOG.md). See [DEVELOPMENT_ROADMAP.md](DEVELOPMENT_ROADMAP.md).
 
 The intended learner experience and current demo boundaries are defined in [PRODUCT_SPEC.md](PRODUCT_SPEC.md).
 Issues found during emulator and self-use testing are tracked in [DEFECT_LOG.md](DEFECT_LOG.md).
@@ -139,7 +139,7 @@ While `flutter run` is active:
 
 ## Run the local quiz-generation backend
 
-The Android app never contains the OpenAI key. During Phase 3 it calls a FastAPI service running on this computer, and the backend keeps the key in an environment variable.
+The Android app never contains the OpenAI key. It calls a FastAPI service running on this computer, and the backend keeps the key in an environment variable. Pasted text uses `/v1/quizzes/generate`; confirmed PDFs use multipart upload to `/v1/quizzes/generate-pdf`, where the backend includes the PDF directly in an OpenAI Responses API request.
 
 Install Python 3.11 or 3.12, then create the ignored local environment:
 

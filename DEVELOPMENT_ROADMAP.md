@@ -43,7 +43,7 @@ Cosmetic and uncommon edge-case defects may be logged for later. Secret exposure
 Version 1 retains:
 
 - local learner settings and progress;
-- pasted text, text-based PDF, and supported web-article sources;
+- pasted text, PDFs, camera-captured study images, and supported web-article sources;
 - AI-generated multiple-choice and typed-answer questions;
 - generated-question review and editing;
 - persistent sessions, attempts, feedback, knowledge bases, and history;
@@ -51,7 +51,7 @@ Version 1 retains:
 - clear loading, retry, offline, and failure states;
 - a privately signed Android APK with automated checks.
 
-Still deferred: production iOS/web/desktop support, YouTube transcription, camera ingestion, flashcards, notes, social features, subscriptions, and public-store work.
+Still deferred: production iOS/web/desktop support, YouTube transcription, flashcards, notes, social features, subscriptions, and public-store work.
 
 ## Phase 3 — Complete the AI learning prototype
 
@@ -93,7 +93,13 @@ Exit criteria: pasted French text produces an editable ten-question MCQ quiz; th
 
 ### Additional sources
 
-- Add local text-based PDF extraction, preview, validation, and safe scanned/protected/oversized errors.
+- [x] Add Android PDF selection, filename/size preview, 10 MB validation, and safe unsupported/oversized errors.
+- [x] Send confirmed PDFs through FastAPI to the OpenAI Responses API as direct file input, keeping the API key out of Flutter.
+- [x] Validate the structured quiz response and save PDF metadata, questions, explanations, concepts, and attempts through the existing local learning core.
+- [x] Manually accept a real PDF-to-quiz OpenAI request on the emulator: generate ten questions, save the quiz, and complete the attempt. The first response was interrupted by an emulator network switch and is tracked as `QM-004`; one retry completed the journey.
+- [x] Confirm the generated PDF quiz and completed attempt survive closing the app, clearing recent apps, and reopening quizMoi.
+- [ ] Add on-demand Android camera permission, capture/retake, image preview, size/orientation checks, and explicit confirmation before upload.
+- [ ] Send a confirmed study image through FastAPI as OpenAI image input and reuse the same structured ten-question generation, save, testing, feedback, and persistence flow.
 - Add backend web-article retrieval, sanitization, and unsupported/paywalled-page handling.
 - Add chunking, language checks, duplicate detection, references, and source deletion.
 
@@ -111,7 +117,7 @@ Exit criteria: pasted French text produces an editable ten-question MCQ quiz; th
 - Make recommendations actionable and explain their reason.
 - Request notification permission only after reminders are enabled.
 
-Exit criteria: text, PDF, and supported URLs work; MCQ and typed-answer quizzes can be generated and completed; review recommendations derive from real performance.
+Exit criteria: text, PDF, camera image, and supported URL sources work; MCQ and typed-answer quizzes can be generated and completed; review recommendations derive from real performance.
 
 ## Phase 5 — Self-use alpha
 
@@ -133,7 +139,7 @@ Exit criteria: text, PDF, and supported URLs work; MCQ and typed-answer quizzes 
 ## Phase 7 — Reliability and polish
 
 - Add safe retries, cancellation, background jobs, deduplication, caching, and offline recovery.
-- Harden URL/PDF processing, prompt-injection defenses, authorization, deletion, secrets, and database recovery.
+- Harden URL/PDF/image processing, prompt-injection defenses, authorization, deletion, secrets, and database recovery.
 - Expand quiz-quality evaluation for grounding, correctness, CEFR fit, ambiguity, distractors, and explanations.
 - Complete accessibility, large-text, French-input, layout, performance, battery, and device testing.
 - Polish onboarding, design consistency, animation, empty states, errors, and navigation.
@@ -149,7 +155,7 @@ Exit criteria: text, PDF, and supported URLs work; MCQ and typed-answer quizzes 
 | Previous phase | New location |
 | --- | --- |
 | Testing and feedback | MCQ feedback in Phase 3; typed/session breadth in Phase 4; exhaustive cases in Phase 7 |
-| Content ingestion | Pasted text in Phase 3; PDF/URL in Phase 4; hardening in Phase 7 |
+| Content ingestion | Pasted text in Phase 3; PDF/camera image/URL in Phase 4; hardening in Phase 7 |
 | AI backend | Local generation in Phase 3; hosting in Phase 6; jobs/evals/observability in Phase 7 |
 | Personalization | Core review queue in Phase 4; clock/failure edges in Phase 7 |
 | Accounts and sync | Conditional Phase 8 |
@@ -168,8 +174,8 @@ Exit criteria: text, PDF, and supported URLs work; MCQ and typed-answer quizzes 
 
 ## Immediate backlog
 
-1. Add the local FastAPI structured-generation boundary.
-2. Add SQLite version 3 source persistence and quiz/source linking.
-3. Build pasted-text preview, generation, review/edit, save, and launch.
-4. Replace sample feedback with persisted generated explanations and concepts.
-5. Verify the complete Phase 3 journey and save the checkpoint to GitHub.
+1. Prevent a completed AI result from being lost or charged twice after a client connection interruption (`QM-004`).
+2. Add supported web-article ingestion through the backend.
+3. Add the planned camera-image source journey without implementing it as part of the current PDF checkpoint.
+4. Add typed-answer questions and deterministic normalization/scoring.
+5. Add the remaining session controls, generation settings, weak-concept mastery, and daily review queue.

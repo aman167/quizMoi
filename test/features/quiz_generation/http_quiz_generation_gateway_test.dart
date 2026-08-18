@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -62,6 +64,51 @@ void main() {
       ),
     );
   });
+
+  test('uploads PDF bytes and settings as multipart data', () async {
+    final client = _RecordingClient(_responseBody());
+    final gateway = HttpQuizGenerationGateway(
+      baseUrl: 'http://localhost:8000',
+      client: client,
+    );
+    final pdfBytes = Uint8List.fromList('%PDF-1.4\ntest'.codeUnits);
+
+    final result = await gateway.generatePdf(
+      PdfQuizGenerationRequest(
+        sourceTitle: 'French PDF',
+        fileName: 'lesson.pdf',
+        pdfBytes: pdfBytes,
+        cefrLevel: 'B1',
+        questionCount: 5,
+      ),
+    );
+
+    final request = client.request!;
+    expect(request.url.path, '/v1/quizzes/generate-pdf');
+    expect(request.fields['sourceTitle'], 'French PDF');
+    expect(request.fields['questionCount'], '5');
+    expect(request.files.single.filename, 'lesson.pdf');
+    expect(request.files.single.length, pdfBytes.length);
+    expect(result.questions, hasLength(5));
+  });
+}
+
+class _RecordingClient extends http.BaseClient {
+  final Map<String, Object?> responseBody;
+  http.MultipartRequest? request;
+
+  _RecordingClient(this.responseBody);
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    this.request = request as http.MultipartRequest;
+    await request.finalize().drain<void>();
+    return http.StreamedResponse(
+      Stream.value(utf8.encode(jsonEncode(responseBody))),
+      200,
+      headers: const {'content-type': 'application/json'},
+    );
+  }
 }
 
 Map<String, Object?> _responseBody() => {
