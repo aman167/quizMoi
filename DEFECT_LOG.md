@@ -27,7 +27,7 @@ This log records issues found during emulator and self-use testing. Entries stay
 
 ## QM-002 — Daily goal shows 24/10 after one visible quiz
 
-- **Status:** Investigating
+- **Status:** Resolved 2026-08-27
 - **Priority:** High
 - **Found:** 2026-08-17, Android 17 emulator
 - **Target:** Phase 5 self-use alpha, before relying on dashboard metrics
@@ -62,5 +62,8 @@ This log records issues found during emulator and self-use testing. Entries stay
 - **Observed:** FastAPI completed `POST /v1/quizzes/generate-pdf` with `200 OK`, but Flutter displayed **The local quiz server is not reachable** and discarded the successful generated quiz. Pressing **Retry** made another provider request and then completed generation.
 - **Evidence:** Emulator logs show the virtual default network switching while the request was active. A subsequent emulator-to-host check returned three successful packets with zero loss. The current Flutter gateway maps every `http.ClientException` to `backend_unavailable`, even when the server completed the request.
 - **Expected:** A temporary interruption after server acceptance must not silently lose a completed result or require a second paid generation. The message must distinguish initial connection failure from a response interrupted after submission.
-- **Recommended direction:** Add a client-generated idempotency key, keep generation status/results temporarily on the backend, and let Flutter recover the existing result before creating another OpenAI request. Preserve the selected source and expose a clear recovery state.
+- **Implemented:** Flutter now creates one stable generation request ID and reuses it for retries. FastAPI temporarily retains the in-progress task or completed quiz, verifies that the ID still represents identical input, and returns the retained result without calling the provider again. Flutter distinguishes an interrupted response from an unreachable backend and presents **Recover Result** while preserving the selected source.
+- **Prototype limit:** Recovery data is held in backend memory for one hour (up to 64 entries). Restarting FastAPI clears it; durable recovery and background jobs remain Phase 7 work.
+- **Automated evidence:** Backend tests cover text/PDF result reuse, conflicting input, and recovery after a cancelled first waiter. Flutter tests cover request-ID reuse, interrupted-response classification, and recovery language. All focused tests pass.
+- **Manual evidence:** A real emulator PDF generation was accepted, then Android airplane mode interrupted the response. The app preserved the selected PDF and request identity; after connectivity returned, retry opened the generated quiz from the retained operation. Because the full network was offline, the immediate health probe correctly produced **Retry**; the narrower reachable-backend wording is covered by the focused widget test.
 - **Acceptance:** Repeating the same generation request after a simulated response interruption returns the original result without another provider call; the learner sees accurate recovery language; focused backend and Flutter tests cover the scenario; emulator verification passes.

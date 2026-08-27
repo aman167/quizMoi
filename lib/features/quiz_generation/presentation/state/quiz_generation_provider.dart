@@ -71,6 +71,7 @@ class QuizGenerationProvider extends ChangeNotifier {
     }
 
     _request = QuizGenerationRequest(
+      requestId: _newId('generation'),
       sourceTitle: sourceTitle.trim().isEmpty
           ? 'French study material'
           : sourceTitle.trim(),
@@ -107,6 +108,7 @@ class QuizGenerationProvider extends ChangeNotifier {
     }
 
     _pdfRequest = PdfQuizGenerationRequest(
+      requestId: _newId('generation'),
       sourceTitle: sourceTitle.trim().isEmpty
           ? 'Imported PDF'
           : sourceTitle.trim(),

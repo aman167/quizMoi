@@ -13,6 +13,7 @@ class ApiModel(BaseModel):
 
 class GenerateQuizRequest(ApiModel):
     schema_version: Literal[1] = Field(alias="schemaVersion")
+    request_id: str = Field(alias="requestId", min_length=8, max_length=128)
     source_title: str = Field(alias="sourceTitle", min_length=1, max_length=120)
     source_text: str = Field(alias="sourceText", min_length=200, max_length=12000)
     cefr_level: Literal["A1", "A2", "B1", "B2", "C1", "C2"] = Field(
@@ -34,6 +35,7 @@ class GenerateQuizRequest(ApiModel):
 
 class GeneratePdfQuizRequest(ApiModel):
     schema_version: Literal[1] = Field(alias="schemaVersion")
+    request_id: str = Field(alias="requestId", min_length=8, max_length=128)
     source_title: str = Field(alias="sourceTitle", min_length=1, max_length=120)
     cefr_level: Literal["A1", "A2", "B1", "B2", "C1", "C2"] = Field(
         alias="cefrLevel"

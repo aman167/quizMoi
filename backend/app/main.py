@@ -1,12 +1,18 @@
+import hashlib
+import json
 import os
 from functools import lru_cache
-from uuid import uuid4
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
+from .generation_recovery import (
+    GenerationRecoveryCapacityError,
+    GenerationRecoveryStore,
+    IdempotencyConflictError,
+)
 from .schemas import (
     GeneratePdfQuizRequest,
     GenerateQuizRequest,
@@ -30,6 +36,43 @@ MAX_PDF_BYTES = 10 * 1024 * 1024
 @lru_cache
 def get_generator() -> QuizGenerator:
     return OpenAIQuizGenerator()
+
+
+@lru_cache
+def get_generation_recovery_store() -> GenerationRecoveryStore:
+    return GenerationRecoveryStore()
+
+
+def _request_fingerprint(request: GenerateQuizRequest) -> str:
+    values = request.model_dump(mode="json", by_alias=True)
+    values.pop("requestId", None)
+    serialized = json.dumps(
+        values,
+        ensure_ascii=False,
+        sort_keys=True,
+    ).encode("utf-8")
+    return hashlib.sha256(serialized).hexdigest()
+
+
+def _pdf_request_fingerprint(
+    request: GeneratePdfQuizRequest,
+    pdf_bytes: bytes,
+    file_name: str,
+) -> str:
+    values = request.model_dump(mode="json", by_alias=True)
+    values.pop("requestId", None)
+    serialized = json.dumps(
+        values,
+        ensure_ascii=False,
+        sort_keys=True,
+    ).encode("utf-8")
+    digest = hashlib.sha256()
+    digest.update(serialized)
+    digest.update(b"\0")
+    digest.update(file_name.encode("utf-8"))
+    digest.update(b"\0")
+    digest.update(pdf_bytes)
+    return digest.hexdigest()
 
 
 def _error(status: int, code: str, message: str) -> HTTPException:
@@ -69,9 +112,18 @@ async def health() -> HealthResponse:
 async def generate_quiz(
     request: GenerateQuizRequest,
     generator: QuizGenerator = Depends(get_generator),
+    recovery_store: GenerationRecoveryStore = Depends(get_generation_recovery_store),
 ) -> GenerateQuizResponse:
     try:
-        generated = await generator.generate(request)
+        generated = await recovery_store.run(
+            request.request_id,
+            _request_fingerprint(request),
+            lambda: generator.generate(request),
+        )
+    except IdempotencyConflictError as error:
+        raise _error(409, "idempotency_conflict", str(error)) from error
+    except GenerationRecoveryCapacityError as error:
+        raise _error(503, "generation_busy", str(error)) from error
     except BackendNotConfiguredError as error:
         raise _error(503, "backend_not_configured", str(error)) from error
     except GenerationTimeoutError as error:
@@ -85,7 +137,7 @@ async def generate_quiz(
 
     return GenerateQuizResponse(
         schema_version=1,
-        request_id=str(uuid4()),
+        request_id=request.request_id,
         title=generated.title,
         questions=generated.questions,
     )
@@ -99,17 +151,20 @@ async def generate_quiz(
 async def generate_quiz_from_pdf(
     file: UploadFile = File(...),
     schema_version: int = Form(alias="schemaVersion"),
+    request_id: str = Form(alias="requestId"),
     source_title: str = Form(alias="sourceTitle"),
     cefr_level: str = Form(alias="cefrLevel"),
     difficulty: str = Form(...),
     question_count: int = Form(alias="questionCount"),
     question_types: str = Form(alias="questionTypes"),
     generator: QuizGenerator = Depends(get_generator),
+    recovery_store: GenerationRecoveryStore = Depends(get_generation_recovery_store),
 ) -> GenerateQuizResponse:
     try:
         request = GeneratePdfQuizRequest.model_validate(
             {
                 "schemaVersion": schema_version,
+                "requestId": request_id,
                 "sourceTitle": source_title,
                 "cefrLevel": cefr_level,
                 "difficulty": difficulty,
@@ -135,7 +190,15 @@ async def generate_quiz_from_pdf(
         raise _error(400, "invalid_pdf", "The selected file is not a readable PDF.")
 
     try:
-        generated = await generator.generate_pdf(request, pdf_bytes, file_name)
+        generated = await recovery_store.run(
+            request.request_id,
+            _pdf_request_fingerprint(request, pdf_bytes, file_name),
+            lambda: generator.generate_pdf(request, pdf_bytes, file_name),
+        )
+    except IdempotencyConflictError as error:
+        raise _error(409, "idempotency_conflict", str(error)) from error
+    except GenerationRecoveryCapacityError as error:
+        raise _error(503, "generation_busy", str(error)) from error
     except BackendNotConfiguredError as error:
         raise _error(503, "backend_not_configured", str(error)) from error
     except GenerationTimeoutError as error:
@@ -149,7 +212,7 @@ async def generate_quiz_from_pdf(
 
     return GenerateQuizResponse(
         schema_version=1,
-        request_id=str(uuid4()),
+        request_id=request.request_id,
         title=generated.title,
         questions=generated.questions,
     )

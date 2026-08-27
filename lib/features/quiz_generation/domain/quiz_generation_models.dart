@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 class QuizGenerationRequest {
   final int schemaVersion;
+  final String requestId;
   final String sourceTitle;
   final String sourceText;
   final String cefrLevel;
@@ -11,6 +12,7 @@ class QuizGenerationRequest {
 
   const QuizGenerationRequest({
     this.schemaVersion = 1,
+    required this.requestId,
     required this.sourceTitle,
     required this.sourceText,
     required this.cefrLevel,
@@ -20,6 +22,7 @@ class QuizGenerationRequest {
 
   Map<String, Object?> toJson() => {
     'schemaVersion': schemaVersion,
+    'requestId': requestId,
     'sourceTitle': sourceTitle,
     'sourceText': sourceText,
     'cefrLevel': cefrLevel,
@@ -31,6 +34,7 @@ class QuizGenerationRequest {
 
 class PdfQuizGenerationRequest {
   final int schemaVersion;
+  final String requestId;
   final String sourceTitle;
   final String fileName;
   final Uint8List pdfBytes;
@@ -40,6 +44,7 @@ class PdfQuizGenerationRequest {
 
   const PdfQuizGenerationRequest({
     this.schemaVersion = 1,
+    required this.requestId,
     required this.sourceTitle,
     required this.fileName,
     required this.pdfBytes,

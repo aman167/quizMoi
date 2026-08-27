@@ -9,6 +9,8 @@ It exposes two quiz-generation routes:
 
 The PDF route validates a maximum 10 MB file and the PDF signature, then sends the document directly to the OpenAI Responses API as an `input_file` with low-detail page images. The request uses structured output and `store=false`; quizMoi stores only source metadata and generated learning data locally, not the PDF bytes. A scanned or protected PDF can still fail if the model cannot read enough useful content, and that failure is returned without losing the learner's selected source.
 
+Both generation routes require a client-created `requestId`. If a mobile connection drops after FastAPI accepted the request, Flutter retries with the same ID. The backend reuses the in-progress operation or completed quiz instead of sending a second paid provider request. Completed results remain in memory for one hour, with at most 64 retained operations; restarting the backend clears this prototype recovery cache. The cache retains the generated quiz and an input fingerprint, not the original source text or PDF bytes.
+
 ## Windows setup
 
 From the project root:
