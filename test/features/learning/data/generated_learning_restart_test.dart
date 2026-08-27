@@ -35,11 +35,12 @@ void main() {
       final source = SourceDocument(
         id: 'source-1',
         title: 'Le trajet de Marie',
-        type: SourceType.pastedText,
+        type: SourceType.webArticle,
         content: List.filled(
           12,
           'Marie prend le train chaque matin pour aller à son travail.',
         ).join(' '),
+        sourceUri: 'https://example.com/fr/le-trajet-de-marie',
         createdAt: now,
       );
       final knowledgeBase = KnowledgeBaseRecord(
@@ -109,6 +110,8 @@ void main() {
       ).getById(quiz.id);
 
       expect(restoredSource!.content, source.content);
+      expect(restoredSource.sourceUri, source.sourceUri);
+      expect(restoredSource.type, SourceType.webArticle);
       expect(restoredKnowledgeBase!.sourceDocumentIds, contains(source.id));
       expect(restoredQuiz!.sourceDocumentId, source.id);
       expect(

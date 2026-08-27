@@ -35,6 +35,43 @@ void main() {
     expect(result.questions.first.correctOptionId, 'a');
   });
 
+  test('retrieves and validates a web article preview', () async {
+    final articleText = List.filled(
+      12,
+      'La bibliothèque accueille les habitants du quartier.',
+    ).join(' ');
+    final client = MockClient((http.Request received) async {
+      expect(received.url.path, '/v1/sources/web/preview');
+      expect(
+        jsonDecode(received.body)['url'],
+        'https://example.com/fr/article',
+      );
+      return http.Response(
+        jsonEncode({
+          'schemaVersion': 1,
+          'url': 'https://example.com/fr/article',
+          'title': 'La bibliothèque du quartier',
+          'text': articleText,
+          'characterCount': articleText.length,
+          'wasTruncated': false,
+        }),
+        200,
+      );
+    });
+    final gateway = HttpQuizGenerationGateway(
+      baseUrl: 'http://localhost:8000',
+      client: client,
+    );
+
+    final preview = await gateway.previewWebArticle(
+      'https://example.com/fr/article',
+    );
+
+    expect(preview.title, 'La bibliothèque du quartier');
+    expect(preview.characterCount, articleText.length);
+    expect(preview.wasTruncated, isFalse);
+  });
+
   test('preserves stable backend error code and message', () async {
     final client = MockClient(
       (_) async => http.Response(

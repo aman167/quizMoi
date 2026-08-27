@@ -102,8 +102,12 @@ Exit criteria: pasted French text produces an editable ten-question MCQ quiz; th
 - [x] Manually verify `QM-004` on the emulator: interrupt one live PDF generation response, preserve the selected source, restore connectivity, and recover the generated quiz through the retained request (completed 2026-08-27). The full-network outage correctly used **Retry** while offline; focused widget coverage verifies **Recover Result** when the backend health probe succeeds.
 - [ ] Add on-demand Android camera permission, capture/retake, image preview, size/orientation checks, and explicit confirmation before upload.
 - [ ] Send a confirmed study image through FastAPI as OpenAI image input and reuse the same structured ten-question generation, save, testing, feedback, and persistence flow.
-- Add backend web-article retrieval, sanitization, and unsupported/paywalled-page handling.
-- Add chunking, language checks, duplicate detection, references, and source deletion.
+- [x] Add a public web-article URL field, backend retrieval, cleaned-text preview, explicit confirmation, and clear unsupported/paywalled/unreachable errors.
+- [x] Restrict web retrieval to public HTTP/HTTPS destinations, revalidate redirects, reject private-network targets and non-text content, cap downloads at 2 MB, and truncate cleaned study text safely to 12,000 characters.
+- [x] Connect confirmed article text to the existing idempotent AI generation, editable draft, local save, testing, feedback, and persistence flow; SQLite schema version 4 retains the final article URL alongside its cleaned text.
+- [x] Verify backend extraction against a live public French Wikipedia article without spending an AI request; focused backend, gateway, provider, migration, persistence, and widget tests pass.
+- [x] Manually accept one real web-article-to-quiz OpenAI request on the emulator, save and complete it, then confirm the article URL, cleaned text, quiz, and attempt survive restart (completed 2026-08-27 with the French Wikipedia article **Pain**). The dashboard restored 55.1% aggregate accuracy, 10 / 10 questions today, and the named 100% attempt in Recent Attempts. The generated quiz placed every correct answer in option A; this separate quality issue is tracked as `QM-005`.
+- Add chunking beyond the first 12,000 characters, language checks, duplicate detection, and source deletion controls.
 
 ### Quiz types and controls
 
@@ -176,7 +180,7 @@ Exit criteria: text, PDF, camera image, and supported URL sources work; MCQ and 
 
 ## Immediate backlog
 
-1. Add supported web-article ingestion through the backend.
-2. Add the planned camera-image source journey.
+1. Add the planned camera-image source journey.
+2. Correct generated-answer position bias (`QM-005`) before routine self-use.
 3. Add typed-answer questions and deterministic normalization/scoring.
 4. Add the remaining session controls, generation settings, weak-concept mastery, and daily review queue.

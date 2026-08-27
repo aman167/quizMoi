@@ -24,6 +24,7 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
   bool _optionsExpanded = false;
   bool _isImportingPdf = false;
   final TextEditingController _textController = TextEditingController();
+  final TextEditingController _urlController = TextEditingController();
   SelectedPdfSource? _importedPdf;
   String? _pdfImportError;
 
@@ -43,26 +44,39 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
         .read<LearnerSettingsProvider>()
         .settings
         .cefrLevel;
-    final prepared = _importedPdf == null
-        ? generation.prepareSource(
-            text: _textController.text,
-            cefrLevel: cefrLevel,
-          )
-        : generation.preparePdf(
+    final hasWebUrl = _urlController.text.trim().isNotEmpty;
+    final prepared = _importedPdf != null
+        ? generation.preparePdf(
             sourceTitle: _importedPdf!.title,
             fileName: _importedPdf!.fileName,
             pdfBytes: _importedPdf!.bytes,
+            cefrLevel: cefrLevel,
+          )
+        : hasWebUrl
+        ? await generation.prepareWebArticle(
+            url: _urlController.text,
+            cefrLevel: cefrLevel,
+          )
+        : generation.prepareSource(
+            text: _textController.text,
             cefrLevel: cefrLevel,
           );
     if (!prepared) {
       return;
     }
+    if (!mounted) return;
     final textRequest = generation.request;
     final pdfRequest = generation.pdfRequest;
-    final sourceTitle = textRequest?.sourceTitle ?? pdfRequest!.sourceTitle;
-    final sourceSummary = textRequest == null
-        ? '${_formatBytes(pdfRequest!.pdfBytes.length)} PDF • ${pdfRequest.cefrLevel} • 10 multiple-choice questions'
-        : '${textRequest.sourceText.length} characters • ${textRequest.cefrLevel} • 10 multiple-choice questions';
+    final webPreview = generation.webArticlePreview;
+    final sourceTitle =
+        webPreview?.title ??
+        textRequest?.sourceTitle ??
+        pdfRequest!.sourceTitle;
+    final sourceSummary = webPreview != null
+        ? '${webPreview.characterCount} characters from web • ${textRequest!.cefrLevel} • 10 multiple-choice questions'
+        : pdfRequest != null
+        ? '${_formatBytes(pdfRequest.pdfBytes.length)} PDF • ${pdfRequest.cefrLevel} • 10 multiple-choice questions'
+        : '${textRequest!.sourceText.length} characters • ${textRequest.cefrLevel} • 10 multiple-choice questions';
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -87,7 +101,9 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
               ),
               const SizedBox(height: 12),
               Text(
-                textRequest == null
+                webPreview != null
+                    ? 'quizMoi retrieved and cleaned this public article through your local backend. Confirm the preview before its text is sent for quiz generation.'
+                    : pdfRequest != null
                     ? 'The full PDF will go to your local quizMoi backend, which sends it to OpenAI so the model can read its text and pages. Your API key stays on the backend.'
                     : 'Confirm that this is the study material you want to send to the local quizMoi backend.',
               ),
@@ -102,15 +118,36 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
                     border: Border.all(color: AppColors.outlineVariant),
                   ),
                   child: SingleChildScrollView(
-                    child: textRequest == null
+                    child: pdfRequest != null
                         ? Row(
                             children: [
                               const Icon(Icons.picture_as_pdf, size: 32),
                               const SizedBox(width: 12),
-                              Expanded(child: Text(pdfRequest!.fileName)),
+                              Expanded(child: Text(pdfRequest.fileName)),
                             ],
                           )
-                        : Text(textRequest.sourceText),
+                        : Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (webPreview != null) ...[
+                                Text(
+                                  webPreview.url,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                if (webPreview.wasTruncated)
+                                  const Padding(
+                                    padding: EdgeInsets.only(top: 4),
+                                    child: Text(
+                                      'The page was long, so this prototype will use its first 12,000 characters.',
+                                    ),
+                                  ),
+                                const SizedBox(height: 10),
+                              ],
+                              Text(textRequest!.sourceText),
+                            ],
+                          ),
                   ),
                 ),
               ),
@@ -222,6 +259,7 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
   @override
   void dispose() {
     _textController.dispose();
+    _urlController.dispose();
     super.dispose();
   }
 
@@ -509,7 +547,7 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
                               SizedBox(width: 8),
                               Expanded(
                                 child: Text(
-                                  'Phase 4 can send a confirmed PDF through your local quizMoi backend so OpenAI can read its text and page images. Your API key stays on the computer.',
+                                  'Phase 4 accepts pasted text, PDFs, and public web articles through your local backend. Your API key stays on the computer.',
                                   style: TextStyle(fontSize: 12),
                                 ),
                               ),
@@ -522,6 +560,7 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
                         Stack(
                           children: [
                             TextField(
+                              key: const ValueKey('studyTextField'),
                               controller: _textController,
                               maxLines: 6,
                               textInputAction: TextInputAction.newline,
@@ -650,6 +689,26 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
                             ),
                           ),
                         ],
+                        const SizedBox(height: 14),
+                        TextField(
+                          key: const ValueKey('webArticleUrlField'),
+                          controller: _urlController,
+                          keyboardType: TextInputType.url,
+                          textInputAction: TextInputAction.done,
+                          autocorrect: false,
+                          decoration: InputDecoration(
+                            labelText: 'Web article URL',
+                            hintText: 'https://example.com/french-article',
+                            prefixIcon: const Icon(Icons.language),
+                            helperText:
+                                'If a URL is entered, it is used instead of pasted text. A selected PDF takes priority.',
+                            filled: true,
+                            fillColor: AppColors.surfaceContainerLow,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
                         const SizedBox(height: 18),
 
                         // Tips
@@ -670,6 +729,9 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
                           'Import PDFs up to 10 MB; OpenAI can read both text and scanned page images',
                         ),
                         _buildTipItem(
+                          'Use public article URLs; subscription, sign-in, and unsupported pages are rejected safely',
+                        ),
+                        _buildTipItem(
                           'The first prototype creates 10 medium multiple-choice questions',
                         ),
 
@@ -679,8 +741,7 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
                         SizedBox(
                           width: double.infinity,
                           child: ElevatedButton(
-                            onPressed:
-                                generation.isGenerating || _isImportingPdf
+                            onPressed: generation.isBusy || _isImportingPdf
                                 ? null
                                 : _previewSource,
                             style: ElevatedButton.styleFrom(
@@ -698,7 +759,9 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
                               spacing: 8,
                               children: [
                                 Text(
-                                  generation.isGenerating
+                                  generation.isFetchingSource
+                                      ? 'Fetching Article…'
+                                      : generation.isGenerating
                                       ? 'Generating Quiz…'
                                       : 'Preview & Generate',
                                   textAlign: TextAlign.center,
@@ -707,7 +770,7 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
-                                if (generation.isGenerating)
+                                if (generation.isBusy)
                                   const SizedBox.square(
                                     dimension: 20,
                                     child: CircularProgressIndicator(
@@ -737,7 +800,7 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
                                 Expanded(child: Text(generation.errorMessage!)),
                                 if (generation.canRetry)
                                   TextButton(
-                                    onPressed: generation.isGenerating
+                                    onPressed: generation.isBusy
                                         ? null
                                         : _generateAndReview,
                                     child: Text(
@@ -753,9 +816,7 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
                         ],
                         const SizedBox(height: 10),
                         OutlinedButton.icon(
-                          onPressed: generation.isGenerating
-                              ? null
-                              : _startDemoQuiz,
+                          onPressed: generation.isBusy ? null : _startDemoQuiz,
                           icon: const Icon(Icons.play_circle_outline),
                           label: const Text('Try Offline Demo Quiz'),
                           style: OutlinedButton.styleFrom(

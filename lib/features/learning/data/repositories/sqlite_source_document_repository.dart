@@ -44,6 +44,7 @@ class SqliteSourceDocumentRepository implements SourceDocumentRepository {
       'id': source.id,
       'title': source.title,
       'source_type': source.type.name,
+      'source_uri': source.sourceUri,
       'content': source.content,
       'created_at': source.createdAt.toIso8601String(),
     }, conflictAlgorithm: ConflictAlgorithm.replace);
@@ -53,6 +54,7 @@ class SqliteSourceDocumentRepository implements SourceDocumentRepository {
     id: row['id']! as String,
     title: row['title']! as String,
     type: SourceType.values.byName(row['source_type']! as String),
+    sourceUri: row['source_uri'] as String?,
     content: row['content']! as String,
     createdAt: DateTime.parse(row['created_at']! as String),
   );

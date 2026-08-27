@@ -18,6 +18,8 @@ from .schemas import (
     GenerateQuizRequest,
     GenerateQuizResponse,
     HealthResponse,
+    WebArticlePreviewRequest,
+    WebArticlePreviewResponse,
 )
 from .service import (
     BackendNotConfiguredError,
@@ -28,6 +30,7 @@ from .service import (
     OpenAIQuizGenerator,
     QuizGenerator,
 )
+from .web_article import HttpWebArticleRetriever, WebArticleError
 
 app = FastAPI(title="quizMoi generation backend", version="0.1.0")
 MAX_PDF_BYTES = 10 * 1024 * 1024
@@ -41,6 +44,11 @@ def get_generator() -> QuizGenerator:
 @lru_cache
 def get_generation_recovery_store() -> GenerationRecoveryStore:
     return GenerationRecoveryStore()
+
+
+@lru_cache
+def get_web_article_retriever() -> HttpWebArticleRetriever:
+    return HttpWebArticleRetriever()
 
 
 def _request_fingerprint(request: GenerateQuizRequest) -> str:
@@ -101,6 +109,29 @@ async def health() -> HealthResponse:
         status="ok",
         model=os.getenv("OPENAI_MODEL", "gpt-5.6-luna"),
         configured=bool(os.getenv("OPENAI_API_KEY")),
+    )
+
+
+@app.post(
+    "/v1/sources/web/preview",
+    response_model=WebArticlePreviewResponse,
+    response_model_by_alias=True,
+)
+async def preview_web_article(
+    request: WebArticlePreviewRequest,
+    retriever: HttpWebArticleRetriever = Depends(get_web_article_retriever),
+) -> WebArticlePreviewResponse:
+    try:
+        article = await retriever.fetch(request.url)
+    except WebArticleError as error:
+        raise _error(error.status_code, error.code, str(error)) from error
+    return WebArticlePreviewResponse(
+        schema_version=1,
+        url=article.url,
+        title=article.title,
+        text=article.text,
+        character_count=len(article.text),
+        was_truncated=article.was_truncated,
     )
 
 

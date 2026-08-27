@@ -361,7 +361,7 @@ void main() {
       _testApp(QuizProvider(), const UploadContentScreen()),
     );
 
-    final input = find.byType(TextField);
+    final input = find.byKey(const ValueKey('studyTextField'));
     await tester.ensureVisible(input);
     await tester.pumpAndSettle();
     await tester.tap(input);
@@ -387,7 +387,10 @@ void main() {
       12,
       'Marie prend le train chaque matin pour aller à son travail.',
     ).join(' ');
-    await tester.enterText(find.byType(TextField), sourceText);
+    await tester.enterText(
+      find.byKey(const ValueKey('studyTextField')),
+      sourceText,
+    );
     await tester.ensureVisible(find.text('Preview & Generate'));
     await tester.tap(find.text('Preview & Generate'));
     await tester.pumpAndSettle();
@@ -435,7 +438,10 @@ void main() {
       12,
       'Marie prend le train chaque matin pour aller à son travail.',
     ).join(' ');
-    await tester.enterText(find.byType(TextField), sourceText);
+    await tester.enterText(
+      find.byKey(const ValueKey('studyTextField')),
+      sourceText,
+    );
     await tester.ensureVisible(find.text('Preview & Generate'));
     await tester.tap(find.text('Preview & Generate'));
     await tester.pumpAndSettle();
@@ -444,6 +450,43 @@ void main() {
 
     expect(find.text('Recover Result'), findsOneWidget);
     expect(find.textContaining('response was interrupted'), findsOneWidget);
+  });
+
+  testWidgets('Web article reaches cleaned preview and generated review', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final gateway = FakeQuizGenerationGateway();
+    await tester.pumpWidget(
+      _testApp(
+        QuizProvider(),
+        const UploadContentScreen(),
+        quizGenerationGateway: gateway,
+      ),
+    );
+    const articleUrl = 'https://example.com/fr/bibliotheque';
+    final urlField = find.byKey(const ValueKey('webArticleUrlField'));
+    await tester.ensureVisible(urlField);
+    await tester.enterText(urlField, articleUrl);
+    await tester.ensureVisible(find.text('Preview & Generate'));
+    await tester.tap(find.text('Preview & Generate'));
+    await tester.pumpAndSettle();
+
+    expect(gateway.previewedUrl, articleUrl);
+    expect(find.text('Preview your source'), findsOneWidget);
+    expect(find.text('La bibliothèque du quartier'), findsOneWidget);
+    expect(find.text(articleUrl), findsAtLeastNWidgets(1));
+    expect(find.textContaining('characters from web'), findsOneWidget);
+
+    await tester.tap(find.text('Generate Quiz'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Review Generated Quiz'), findsOneWidget);
+    expect(find.text('Question 1'), findsOneWidget);
   });
 
   testWidgets('Selected PDF reaches the source preview with safe metadata', (
@@ -500,7 +543,10 @@ void main() {
       await tester.pumpWidget(
         _testApp(QuizProvider(), UploadContentScreen(pdfSourcePicker: picker)),
       );
-      await tester.enterText(find.byType(TextField), existingText);
+      await tester.enterText(
+        find.byKey(const ValueKey('studyTextField')),
+        existingText,
+      );
 
       await tester.ensureVisible(find.byTooltip('Import PDF'));
       await tester.tap(find.byTooltip('Import PDF'));

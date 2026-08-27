@@ -27,7 +27,7 @@ This log records issues found during emulator and self-use testing. Entries stay
 
 ## QM-002 — Daily goal shows 24/10 after one visible quiz
 
-- **Status:** Resolved 2026-08-27
+- **Status:** Investigating
 - **Priority:** High
 - **Found:** 2026-08-17, Android 17 emulator
 - **Target:** Phase 5 self-use alpha, before relying on dashboard metrics
@@ -55,7 +55,7 @@ This log records issues found during emulator and self-use testing. Entries stay
 
 ## QM-004 — Successful AI response can be lost after a connection interruption
 
-- **Status:** Investigating
+- **Status:** Resolved 2026-08-27
 - **Priority:** High
 - **Found:** 2026-08-17, real Phase 4 PDF/OpenAI emulator test
 - **Target:** Phase 4 follow-up, before routine PDF self-use
@@ -67,3 +67,15 @@ This log records issues found during emulator and self-use testing. Entries stay
 - **Automated evidence:** Backend tests cover text/PDF result reuse, conflicting input, and recovery after a cancelled first waiter. Flutter tests cover request-ID reuse, interrupted-response classification, and recovery language. All focused tests pass.
 - **Manual evidence:** A real emulator PDF generation was accepted, then Android airplane mode interrupted the response. The app preserved the selected PDF and request identity; after connectivity returned, retry opened the generated quiz from the retained operation. Because the full network was offline, the immediate health probe correctly produced **Retry**; the narrower reachable-backend wording is covered by the focused widget test.
 - **Acceptance:** Repeating the same generation request after a simulated response interruption returns the original result without another provider call; the learner sees accurate recovery language; focused backend and Flutter tests cover the scenario; emulator verification passes.
+
+## QM-005 — Generated correct answers are all in option A
+
+- **Status:** Open
+- **Priority:** High
+- **Found:** 2026-08-27, real Phase 4 web-article/OpenAI emulator test
+- **Target:** Phase 4 quiz-quality follow-up, before routine self-use
+- **Observed:** The ten-question quiz generated from the French Wikipedia article **Pain** placed the correct answer in option A for every question. Selecting the first option ten times produced a 100% score.
+- **Evidence:** The completed emulator attempt shows 10 of 10 correct, and the persisted quiz records option position 0 as the correct option for all ten questions.
+- **Expected:** Correct-answer positions should be distributed unpredictably so a learner cannot score well by repeatedly choosing the same position. Reordering must preserve each option's stable ID and the correct-answer mapping.
+- **Likely area:** The structured generation contract labels the correct answer and options, but the generation prompt and client save path do not currently require or perform answer-position randomization.
+- **Acceptance:** Generated MCQ sets randomize option order safely, preserve answer/explanation correctness, avoid obvious position bias across a reviewed evaluation set, and pass unit plus emulator tests.

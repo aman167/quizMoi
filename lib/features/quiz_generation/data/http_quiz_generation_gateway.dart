@@ -22,6 +22,58 @@ class HttpQuizGenerationGateway implements QuizGenerationGateway {
        _client = client ?? http.Client();
 
   @override
+  Future<WebArticleSourcePreview> previewWebArticle(String url) async {
+    try {
+      final response = await _client
+          .post(
+            baseUri.resolve('/v1/sources/web/preview'),
+            headers: const {'content-type': 'application/json'},
+            body: jsonEncode({'schemaVersion': 1, 'url': url}),
+          )
+          .timeout(const Duration(seconds: 20));
+      final body = _decodeObject(response.body);
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw _errorFromResponse(response.statusCode, body);
+      }
+      if (body['schemaVersion'] != 1 ||
+          body['characterCount'] is! int ||
+          body['wasTruncated'] is! bool) {
+        throw const FormatException('Unsupported article preview.');
+      }
+      final text = _requiredString(body, 'text');
+      final characterCount = body['characterCount']! as int;
+      if (characterCount < 200 || characterCount > 12000 || text.length < 200) {
+        throw const FormatException('Invalid article text length.');
+      }
+      return WebArticleSourcePreview(
+        schemaVersion: 1,
+        url: _requiredString(body, 'url'),
+        title: _requiredString(body, 'title'),
+        text: text,
+        characterCount: characterCount,
+        wasTruncated: body['wasTruncated']! as bool,
+      );
+    } on QuizGenerationException {
+      rethrow;
+    } on TimeoutException {
+      throw const QuizGenerationException(
+        'article_timeout',
+        'The article website took too long to respond. Your URL is still here, so you can retry.',
+      );
+    } on http.ClientException {
+      throw const QuizGenerationException(
+        'backend_unavailable',
+        'The local quiz server is not reachable. Start it on your computer, then retry.',
+      );
+    } on FormatException {
+      throw const QuizGenerationException(
+        'article_unreadable',
+        'The server returned an article preview the app could not understand.',
+      );
+    }
+  }
+
+  @override
   Future<GeneratedQuizDraft> generate(QuizGenerationRequest request) async {
     try {
       final response = await _client
