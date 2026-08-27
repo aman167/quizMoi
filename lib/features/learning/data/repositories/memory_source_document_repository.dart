@@ -28,7 +28,27 @@ class MemorySourceDocumentRepository implements SourceDocumentRepository {
   Future<SourceDocument?> getById(String id) async => _sources[id];
 
   @override
+  Future<SourceDocument?> findDuplicate(SourceDocument source) async {
+    return _sources.values.cast<SourceDocument?>().firstWhere(
+      (candidate) =>
+          candidate!.id != source.id && _sameSource(candidate, source),
+      orElse: () => null,
+    );
+  }
+
+  @override
   Future<void> save(SourceDocument source) async {
     _sources[source.id] = source;
   }
+}
+
+bool _sameSource(SourceDocument left, SourceDocument right) {
+  if (left.type != right.type) return false;
+  if (left.sourceUri != null && right.sourceUri != null) {
+    return left.sourceUri!.trim().toLowerCase() ==
+        right.sourceUri!.trim().toLowerCase();
+  }
+  String normalize(String value) =>
+      value.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
+  return normalize(left.content) == normalize(right.content);
 }

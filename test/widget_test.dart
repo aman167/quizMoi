@@ -27,6 +27,7 @@ import 'package:quiz_moi_app/features/learning/presentation/state/saved_quiz_pro
 import 'package:quiz_moi_app/features/learning/presentation/state/attempt_history_provider.dart';
 import 'package:quiz_moi_app/features/learning/presentation/state/knowledge_base_provider.dart';
 import 'package:quiz_moi_app/features/learning/presentation/state/learner_settings_provider.dart';
+import 'package:quiz_moi_app/features/learning/presentation/state/source_document_provider.dart';
 import 'package:quiz_moi_app/features/quiz_generation/presentation/state/quiz_generation_provider.dart';
 import 'package:quiz_moi_app/features/quiz_generation/domain/quiz_generation_gateway.dart';
 import 'package:quiz_moi_app/features/quiz_generation/domain/quiz_generation_models.dart';
@@ -73,11 +74,12 @@ Widget _testApp(
   final effectiveLearnerSettingsProvider =
       learnerSettingsProvider ??
       (LearnerSettingsProvider(MemoryLearnerSettingsRepository())..load());
+  final sourceRepository = MemorySourceDocumentRepository();
+  final sourceDocumentProvider = SourceDocumentProvider(sourceRepository)
+    ..load();
   return MultiProvider(
     providers: [
-      Provider<SourceDocumentRepository>.value(
-        value: MemorySourceDocumentRepository(),
-      ),
+      Provider<SourceDocumentRepository>.value(value: sourceRepository),
       ChangeNotifierProvider(
         create: (_) => QuizGenerationProvider(
           gateway: quizGenerationGateway ?? FakeQuizGenerationGateway(),
@@ -88,6 +90,7 @@ Widget _testApp(
       ChangeNotifierProvider.value(value: historyProvider),
       ChangeNotifierProvider.value(value: knowledgeBaseProvider),
       ChangeNotifierProvider.value(value: effectiveLearnerSettingsProvider),
+      ChangeNotifierProvider.value(value: sourceDocumentProvider),
     ],
     child: MaterialApp(
       builder: (context, child) => MediaQuery(
@@ -200,6 +203,7 @@ void main() {
     );
     expect(tester.widget<ElevatedButton>(nextButton).onPressed, isNull);
 
+    await tester.ensureVisible(find.text('Journalier'));
     await tester.tap(find.text('Journalier'));
     await tester.pump();
 
@@ -277,6 +281,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Previous'));
     await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Journalier'));
     await tester.tap(find.text('Journalier'));
     await tester.pump();
 
@@ -631,8 +636,9 @@ void main() {
         ),
       );
       await tester.pump();
+      final layoutException = tester.takeException();
       expect(
-        tester.takeException(),
+        layoutException,
         isNull,
         reason: '${entry.key} should not overflow with enlarged text.',
       );

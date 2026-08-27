@@ -10,6 +10,8 @@ import '../features/learning/presentation/state/attempt_history_provider.dart';
 import '../features/learning/presentation/widgets/attempt_history_section.dart';
 import '../features/learning/presentation/widgets/knowledge_base_library.dart';
 import '../features/learning/presentation/state/learner_settings_provider.dart';
+import '../features/learning/presentation/widgets/source_document_library.dart';
+import '../features/learning/presentation/widgets/active_recall_section.dart';
 
 class DashboardScreen extends StatelessWidget {
   final Function(int)? onNavigateTab;
@@ -287,7 +289,13 @@ class DashboardScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 24),
 
+                    const ActiveRecallSection(),
+                    const SizedBox(height: 24),
+
                     const KnowledgeBaseLibrary(),
+                    const SizedBox(height: 24),
+
+                    const SourceDocumentLibrary(),
                     const SizedBox(height: 24),
 
                     const SavedQuizLibrary(),

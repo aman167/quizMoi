@@ -9,11 +9,18 @@ import '../features/learning/presentation/state/learner_settings_provider.dart';
 import '../features/quiz_generation/presentation/state/quiz_generation_provider.dart';
 import '../features/source_ingestion/data/android_pdf_source_picker.dart';
 import '../features/source_ingestion/domain/pdf_source_picker.dart';
+import '../features/source_ingestion/data/android_image_source_picker.dart';
+import '../features/source_ingestion/domain/image_source_picker.dart';
 
 class UploadContentScreen extends StatefulWidget {
   final PdfSourcePicker? pdfSourcePicker;
+  final ImageSourcePicker? imageSourcePicker;
 
-  const UploadContentScreen({super.key, this.pdfSourcePicker});
+  const UploadContentScreen({
+    super.key,
+    this.pdfSourcePicker,
+    this.imageSourcePicker,
+  });
 
   @override
   State<UploadContentScreen> createState() => _UploadContentScreenState();
@@ -23,13 +30,31 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
   int _selectedTab = 0; // 0: Quiz, 1: Flashcards, 2: Notes
   bool _optionsExpanded = false;
   bool _isImportingPdf = false;
+  bool _isCapturingImage = false;
   final TextEditingController _textController = TextEditingController();
   final TextEditingController _urlController = TextEditingController();
   SelectedPdfSource? _importedPdf;
+  SelectedImageSource? _capturedImage;
   String? _pdfImportError;
+  String? _imageImportError;
+  int _questionCount = 10;
+  String _difficulty = 'medium';
+  final Set<QuestionType> _questionTypes = {QuestionType.multipleChoice};
+  int? _timeLimitMinutes;
 
   PdfSourcePicker get _pdfSourcePicker =>
       widget.pdfSourcePicker ?? const AndroidPdfSourcePicker();
+
+  ImageSourcePicker get _imageSourcePicker =>
+      widget.imageSourcePicker ?? AndroidImageSourcePicker();
+
+  List<QuestionType> get _selectedQuestionTypes => _questionTypes.toList();
+
+  String get _questionTypeSummary => _questionTypes.length == 2
+      ? 'mixed questions'
+      : _questionTypes.single == QuestionType.typedAnswer
+      ? 'typed-answer questions'
+      : 'multiple-choice questions';
 
   void _showComingSoon(String feature) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -45,21 +70,45 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
         .settings
         .cefrLevel;
     final hasWebUrl = _urlController.text.trim().isNotEmpty;
-    final prepared = _importedPdf != null
+    final prepared = _capturedImage != null
+        ? generation.prepareImage(
+            sourceTitle: _capturedImage!.title,
+            fileName: _capturedImage!.fileName,
+            mimeType: _capturedImage!.mimeType,
+            imageBytes: _capturedImage!.bytes,
+            cefrLevel: cefrLevel,
+            difficulty: _difficulty,
+            questionCount: _questionCount,
+            questionTypes: _selectedQuestionTypes,
+            timeLimitMinutes: _timeLimitMinutes,
+          )
+        : _importedPdf != null
         ? generation.preparePdf(
             sourceTitle: _importedPdf!.title,
             fileName: _importedPdf!.fileName,
             pdfBytes: _importedPdf!.bytes,
             cefrLevel: cefrLevel,
+            difficulty: _difficulty,
+            questionCount: _questionCount,
+            questionTypes: _selectedQuestionTypes,
+            timeLimitMinutes: _timeLimitMinutes,
           )
         : hasWebUrl
         ? await generation.prepareWebArticle(
             url: _urlController.text,
             cefrLevel: cefrLevel,
+            difficulty: _difficulty,
+            questionCount: _questionCount,
+            questionTypes: _selectedQuestionTypes,
+            timeLimitMinutes: _timeLimitMinutes,
           )
         : generation.prepareSource(
             text: _textController.text,
             cefrLevel: cefrLevel,
+            difficulty: _difficulty,
+            questionCount: _questionCount,
+            questionTypes: _selectedQuestionTypes,
+            timeLimitMinutes: _timeLimitMinutes,
           );
     if (!prepared) {
       return;
@@ -67,16 +116,22 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
     if (!mounted) return;
     final textRequest = generation.request;
     final pdfRequest = generation.pdfRequest;
+    final imageRequest = generation.imageRequest;
     final webPreview = generation.webArticlePreview;
     final sourceTitle =
         webPreview?.title ??
         textRequest?.sourceTitle ??
-        pdfRequest!.sourceTitle;
+        pdfRequest?.sourceTitle ??
+        imageRequest!.sourceTitle;
+    final settingsSummary =
+        '$_questionCount $_questionTypeSummary • ${_difficulty[0].toUpperCase()}${_difficulty.substring(1)}${_timeLimitMinutes == null ? '' : ' • $_timeLimitMinutes minute limit'}';
     final sourceSummary = webPreview != null
-        ? '${webPreview.characterCount} characters from web • ${textRequest!.cefrLevel} • 10 multiple-choice questions'
+        ? '${webPreview.characterCount} characters from web • ${textRequest!.cefrLevel} • $settingsSummary'
         : pdfRequest != null
-        ? '${_formatBytes(pdfRequest.pdfBytes.length)} PDF • ${pdfRequest.cefrLevel} • 10 multiple-choice questions'
-        : '${textRequest!.sourceText.length} characters • ${textRequest.cefrLevel} • 10 multiple-choice questions';
+        ? '${_formatBytes(pdfRequest.pdfBytes.length)} PDF • ${pdfRequest.cefrLevel} • $settingsSummary'
+        : imageRequest != null
+        ? '${_formatBytes(imageRequest.imageBytes.length)} image • ${imageRequest.cefrLevel} • $settingsSummary'
+        : '${textRequest!.sourceText.length} characters • ${textRequest.cefrLevel} • $settingsSummary';
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -103,6 +158,8 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
               Text(
                 webPreview != null
                     ? 'quizMoi retrieved and cleaned this public article through your local backend. Confirm the preview before its text is sent for quiz generation.'
+                    : imageRequest != null
+                    ? 'The confirmed photograph will go through your local backend as OpenAI image input. The API key remains on your computer.'
                     : pdfRequest != null
                     ? 'The full PDF will go to your local quizMoi backend, which sends it to OpenAI so the model can read its text and pages. Your API key stays on the backend.'
                     : 'Confirm that this is the study material you want to send to the local quizMoi backend.',
@@ -118,7 +175,19 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
                     border: Border.all(color: AppColors.outlineVariant),
                   ),
                   child: SingleChildScrollView(
-                    child: pdfRequest != null
+                    child: imageRequest != null
+                        ? Column(
+                            children: [
+                              Image.memory(
+                                imageRequest.imageBytes,
+                                height: 220,
+                                fit: BoxFit.contain,
+                              ),
+                              const SizedBox(height: 8),
+                              Text(imageRequest.fileName),
+                            ],
+                          )
+                        : pdfRequest != null
                         ? Row(
                             children: [
                               const Icon(Icons.picture_as_pdf, size: 32),
@@ -140,7 +209,7 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
                                   const Padding(
                                     padding: EdgeInsets.only(top: 4),
                                     child: Text(
-                                      'The page was long, so this prototype will use its first 12,000 characters.',
+                                      'The page was long, so this prototype retained 60,000 characters and will sample representative chunks for generation.',
                                     ),
                                   ),
                                 const SizedBox(height: 10),
@@ -220,7 +289,11 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
       final imported = await _pdfSourcePicker.pickPdf();
       if (!mounted || imported == null) return;
       context.read<QuizGenerationProvider>().reset();
-      setState(() => _importedPdf = imported);
+      setState(() {
+        _importedPdf = imported;
+        _capturedImage = null;
+        _imageImportError = null;
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -240,6 +313,64 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
     } finally {
       if (mounted) setState(() => _isImportingPdf = false);
     }
+  }
+
+  void _setQuestionType(QuestionType type, bool selected) {
+    setState(() {
+      if (selected) {
+        _questionTypes.add(type);
+      } else if (_questionTypes.length > 1) {
+        _questionTypes.remove(type);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Keep at least one question type.')),
+        );
+      }
+    });
+  }
+
+  Future<void> _captureImage() async {
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _isCapturingImage = true;
+      _imageImportError = null;
+    });
+    try {
+      final captured = await _imageSourcePicker.captureImage();
+      if (!mounted || captured == null) return;
+      context.read<QuizGenerationProvider>().reset();
+      setState(() {
+        _capturedImage = captured;
+        _importedPdf = null;
+        _pdfImportError = null;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Photograph captured. Preview it before AI generation.',
+          ),
+        ),
+      );
+    } on ImageSelectionException catch (error) {
+      if (mounted) setState(() => _imageImportError = error.message);
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _imageImportError =
+              'The photograph could not be captured. Existing text was not changed.';
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _isCapturingImage = false);
+    }
+  }
+
+  void _removeCapturedImage() {
+    context.read<QuizGenerationProvider>().reset();
+    setState(() {
+      _capturedImage = null;
+      _imageImportError = null;
+    });
   }
 
   void _removeImportedPdf() {
@@ -435,12 +566,111 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
                   if (_optionsExpanded)
                     Padding(
                       padding: const EdgeInsets.all(16),
-                      child: Text(
-                        'Options: 10 Questions • Medium Difficulty • Multiple Choice',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppColors.onSurfaceVariant,
-                        ),
+                      child: Column(
+                        children: [
+                          DropdownButtonFormField<int>(
+                            initialValue: _questionCount,
+                            decoration: const InputDecoration(
+                              labelText: 'Question count',
+                              border: OutlineInputBorder(),
+                            ),
+                            items: const [5, 10, 15]
+                                .map(
+                                  (count) => DropdownMenuItem(
+                                    value: count,
+                                    child: Text('$count questions'),
+                                  ),
+                                )
+                                .toList(),
+                            onChanged: (value) {
+                              if (value != null) {
+                                setState(() => _questionCount = value);
+                              }
+                            },
+                          ),
+                          const SizedBox(height: 12),
+                          DropdownButtonFormField<String>(
+                            initialValue: _difficulty,
+                            decoration: const InputDecoration(
+                              labelText: 'Difficulty',
+                              border: OutlineInputBorder(),
+                            ),
+                            items: const [
+                              DropdownMenuItem(
+                                value: 'easy',
+                                child: Text('Easy'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'medium',
+                                child: Text('Medium'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'hard',
+                                child: Text('Hard'),
+                              ),
+                            ],
+                            onChanged: (value) {
+                              if (value != null) {
+                                setState(() => _difficulty = value);
+                              }
+                            },
+                          ),
+                          const SizedBox(height: 12),
+                          CheckboxListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: const Text('Multiple choice'),
+                            value: _questionTypes.contains(
+                              QuestionType.multipleChoice,
+                            ),
+                            onChanged: (selected) => _setQuestionType(
+                              QuestionType.multipleChoice,
+                              selected ?? false,
+                            ),
+                          ),
+                          CheckboxListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: const Text('Typed answer'),
+                            subtitle: const Text(
+                              'Case and trailing punctuation are ignored; accents remain significant.',
+                            ),
+                            value: _questionTypes.contains(
+                              QuestionType.typedAnswer,
+                            ),
+                            onChanged: (selected) => _setQuestionType(
+                              QuestionType.typedAnswer,
+                              selected ?? false,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          DropdownButtonFormField<int?>(
+                            initialValue: _timeLimitMinutes,
+                            decoration: const InputDecoration(
+                              labelText: 'Optional time limit',
+                              border: OutlineInputBorder(),
+                            ),
+                            items: const [
+                              DropdownMenuItem<int?>(
+                                value: null,
+                                child: Text('No time limit'),
+                              ),
+                              DropdownMenuItem<int?>(
+                                value: 5,
+                                child: Text('5 minutes'),
+                              ),
+                              DropdownMenuItem<int?>(
+                                value: 10,
+                                child: Text('10 minutes'),
+                              ),
+                              DropdownMenuItem<int?>(
+                                value: 20,
+                                child: Text('20 minutes'),
+                              ),
+                            ],
+                            onChanged: (value) {
+                              setState(() => _timeLimitMinutes = value);
+                            },
+                          ),
+                        ],
                       ),
                     ),
 
@@ -547,7 +777,7 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
                               SizedBox(width: 8),
                               Expanded(
                                 child: Text(
-                                  'Phase 4 accepts pasted text, PDFs, and public web articles through your local backend. Your API key stays on the computer.',
+                                  'Phase 4 accepts pasted text, PDFs, camera photographs, and public web articles through your local backend. Your API key stays on the computer.',
                                   style: TextStyle(fontSize: 12),
                                 ),
                               ),
@@ -619,6 +849,8 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
                                   _buildCircleIconButton(
                                     Icons.photo_camera,
                                     'Scan with Camera',
+                                    onPressed: _captureImage,
+                                    enabled: !_isCapturingImage,
                                   ),
                                 ],
                               ),
@@ -630,6 +862,12 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
                           const LinearProgressIndicator(),
                           const SizedBox(height: 8),
                           const Text('Opening the Android PDF picker…'),
+                        ],
+                        if (_isCapturingImage) ...[
+                          const SizedBox(height: 12),
+                          const LinearProgressIndicator(),
+                          const SizedBox(height: 8),
+                          const Text('Opening the Android camera…'),
                         ],
                         if (_importedPdf != null) ...[
                           const SizedBox(height: 12),
@@ -689,6 +927,67 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
                             ),
                           ),
                         ],
+                        if (_capturedImage != null) ...[
+                          const SizedBox(height: 12),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: AppColors.secondaryContainer,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Column(
+                              children: [
+                                Image.memory(
+                                  _capturedImage!.bytes,
+                                  height: 180,
+                                  fit: BoxFit.contain,
+                                ),
+                                const SizedBox(height: 8),
+                                Row(
+                                  children: [
+                                    const Icon(Icons.photo_camera_outlined),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text(
+                                        '${_capturedImage!.orientation} • ${_capturedImage!.width} × ${_capturedImage!.height} • ${_formatBytes(_capturedImage!.fileSizeBytes)}',
+                                      ),
+                                    ),
+                                    IconButton(
+                                      onPressed: _captureImage,
+                                      tooltip: 'Retake photograph',
+                                      icon: const Icon(Icons.refresh),
+                                    ),
+                                    IconButton(
+                                      onPressed: _removeCapturedImage,
+                                      tooltip: 'Remove photograph',
+                                      icon: const Icon(Icons.close),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                        if (_imageImportError != null) ...[
+                          const SizedBox(height: 12),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: AppColors.errorContainer,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Icon(Icons.error_outline),
+                                const SizedBox(width: 8),
+                                Expanded(child: Text(_imageImportError!)),
+                              ],
+                            ),
+                          ),
+                        ],
                         const SizedBox(height: 14),
                         TextField(
                           key: const ValueKey('webArticleUrlField'),
@@ -701,7 +1000,7 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
                             hintText: 'https://example.com/french-article',
                             prefixIcon: const Icon(Icons.language),
                             helperText:
-                                'If a URL is entered, it is used instead of pasted text. A selected PDF takes priority.',
+                                'If a URL is entered, it is used instead of pasted text. A selected photograph or PDF takes priority.',
                             filled: true,
                             fillColor: AppColors.surfaceContainerLow,
                             border: OutlineInputBorder(
@@ -732,7 +1031,7 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
                           'Use public article URLs; subscription, sign-in, and unsupported pages are rejected safely',
                         ),
                         _buildTipItem(
-                          'The first prototype creates 10 medium multiple-choice questions',
+                          'Choose 5, 10, or 15 questions; difficulty; MCQ, typed, or mixed; and an optional time limit',
                         ),
 
                         const SizedBox(height: 24),
@@ -741,7 +1040,10 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
                         SizedBox(
                           width: double.infinity,
                           child: ElevatedButton(
-                            onPressed: generation.isBusy || _isImportingPdf
+                            onPressed:
+                                generation.isBusy ||
+                                    _isImportingPdf ||
+                                    _isCapturingImage
                                 ? null
                                 : _previewSource,
                             style: ElevatedButton.styleFrom(

@@ -6,4 +6,6 @@ abstract interface class QuizGenerationGateway {
   Future<GeneratedQuizDraft> generate(QuizGenerationRequest request);
 
   Future<GeneratedQuizDraft> generatePdf(PdfQuizGenerationRequest request);
+
+  Future<GeneratedQuizDraft> generateImage(ImageQuizGenerationRequest request);
 }

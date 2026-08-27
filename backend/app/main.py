@@ -14,6 +14,7 @@ from .generation_recovery import (
     IdempotencyConflictError,
 )
 from .schemas import (
+    GenerateImageQuizRequest,
     GeneratePdfQuizRequest,
     GenerateQuizRequest,
     GenerateQuizResponse,
@@ -29,11 +30,14 @@ from .service import (
     InvalidGenerationError,
     OpenAIQuizGenerator,
     QuizGenerator,
+    looks_like_french,
 )
 from .web_article import HttpWebArticleRetriever, WebArticleError
 
 app = FastAPI(title="quizMoi generation backend", version="0.1.0")
 MAX_PDF_BYTES = 10 * 1024 * 1024
+MAX_IMAGE_BYTES = 10 * 1024 * 1024
+ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
 
 
 @lru_cache
@@ -81,6 +85,10 @@ def _pdf_request_fingerprint(
     digest.update(b"\0")
     digest.update(pdf_bytes)
     return digest.hexdigest()
+
+
+def _media_request_fingerprint(request, data: bytes, file_name: str) -> str:
+    return _pdf_request_fingerprint(request, data, file_name)
 
 
 def _error(status: int, code: str, message: str) -> HTTPException:
@@ -145,6 +153,12 @@ async def generate_quiz(
     generator: QuizGenerator = Depends(get_generator),
     recovery_store: GenerationRecoveryStore = Depends(get_generation_recovery_store),
 ) -> GenerateQuizResponse:
+    if not looks_like_french(request.source_text):
+        raise _error(
+            400,
+            "invalid_language",
+            "The source does not appear to contain enough French study material.",
+        )
     try:
         generated = await recovery_store.run(
             request.request_id,
@@ -200,7 +214,7 @@ async def generate_quiz_from_pdf(
                 "cefrLevel": cefr_level,
                 "difficulty": difficulty,
                 "questionCount": question_count,
-                "questionTypes": [question_types],
+                "questionTypes": question_types.split(","),
             }
         )
     except ValidationError as error:
@@ -225,6 +239,98 @@ async def generate_quiz_from_pdf(
             request.request_id,
             _pdf_request_fingerprint(request, pdf_bytes, file_name),
             lambda: generator.generate_pdf(request, pdf_bytes, file_name),
+        )
+    except IdempotencyConflictError as error:
+        raise _error(409, "idempotency_conflict", str(error)) from error
+    except GenerationRecoveryCapacityError as error:
+        raise _error(503, "generation_busy", str(error)) from error
+    except BackendNotConfiguredError as error:
+        raise _error(503, "backend_not_configured", str(error)) from error
+    except GenerationTimeoutError as error:
+        raise _error(504, "generation_timeout", str(error)) from error
+    except GenerationQuotaError as error:
+        raise _error(429, "generation_quota", str(error)) from error
+    except InvalidGenerationError as error:
+        raise _error(422, "invalid_generation", str(error)) from error
+    except GenerationProviderError as error:
+        raise _error(502, "generation_provider", str(error)) from error
+
+    return GenerateQuizResponse(
+        schema_version=1,
+        request_id=request.request_id,
+        title=generated.title,
+        questions=generated.questions,
+    )
+
+
+@app.post(
+    "/v1/quizzes/generate-image",
+    response_model=GenerateQuizResponse,
+    response_model_by_alias=True,
+)
+async def generate_quiz_from_image(
+    file: UploadFile = File(...),
+    schema_version: int = Form(alias="schemaVersion"),
+    request_id: str = Form(alias="requestId"),
+    source_title: str = Form(alias="sourceTitle"),
+    cefr_level: str = Form(alias="cefrLevel"),
+    difficulty: str = Form(...),
+    question_count: int = Form(alias="questionCount"),
+    question_types: str = Form(alias="questionTypes"),
+    generator: QuizGenerator = Depends(get_generator),
+    recovery_store: GenerationRecoveryStore = Depends(get_generation_recovery_store),
+) -> GenerateQuizResponse:
+    try:
+        request = GenerateImageQuizRequest.model_validate(
+            {
+                "schemaVersion": schema_version,
+                "requestId": request_id,
+                "sourceTitle": source_title,
+                "cefrLevel": cefr_level,
+                "difficulty": difficulty,
+                "questionCount": question_count,
+                "questionTypes": question_types.split(","),
+            }
+        )
+    except ValidationError as error:
+        raise _error(
+            400,
+            "invalid_request",
+            "Check the study image and quiz settings, then try again.",
+        ) from error
+
+    mime_type = (file.content_type or "").lower()
+    if mime_type not in ALLOWED_IMAGE_TYPES:
+        raise _error(400, "invalid_image", "Choose a JPEG, PNG, or WebP image.")
+    file_name = file.filename or "study-photo.jpg"
+    image_bytes = await file.read(MAX_IMAGE_BYTES + 1)
+    await file.close()
+    if len(image_bytes) > MAX_IMAGE_BYTES:
+        raise _error(413, "image_too_large", "The image must be 10 MB or smaller.")
+    if not image_bytes:
+        raise _error(400, "invalid_image", "The selected image is empty.")
+    valid_signature = (
+        mime_type == "image/jpeg" and image_bytes.startswith(b"\xff\xd8\xff")
+    ) or (
+        mime_type == "image/png" and image_bytes.startswith(b"\x89PNG\r\n\x1a\n")
+    ) or (
+        mime_type == "image/webp"
+        and image_bytes.startswith(b"RIFF")
+        and image_bytes[8:12] == b"WEBP"
+    )
+    if not valid_signature:
+        raise _error(400, "invalid_image", "The selected image is not readable.")
+
+    try:
+        generated = await recovery_store.run(
+            request.request_id,
+            _media_request_fingerprint(request, image_bytes, file_name),
+            lambda: generator.generate_image(
+                request,
+                image_bytes,
+                file_name,
+                mime_type,
+            ),
         )
     except IdempotencyConflictError as error:
         raise _error(409, "idempotency_conflict", str(error)) from error

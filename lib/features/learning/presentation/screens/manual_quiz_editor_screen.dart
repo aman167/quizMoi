@@ -6,6 +6,8 @@ import '../../domain/entities/learning_entities.dart';
 import '../../domain/repositories/source_document_repository.dart';
 import '../state/knowledge_base_provider.dart';
 import '../state/saved_quiz_provider.dart';
+import '../state/source_document_provider.dart';
+import '../../../quiz_generation/presentation/state/quiz_generation_provider.dart';
 
 enum QuizEditorAction { regenerate }
 
@@ -31,6 +33,7 @@ class _ManualQuizEditorScreenState extends State<ManualQuizEditorScreen> {
   final List<_QuestionDraft> _questions = [];
   String? _knowledgeBaseId;
   bool _isSaving = false;
+  int? _regeneratingQuestionIndex;
 
   bool get _isEditing => widget.existingQuiz != null;
   bool get _isGeneratedDraft => widget.draftQuiz != null;
@@ -78,6 +81,30 @@ class _ManualQuizEditorScreenState extends State<ManualQuizEditorScreen> {
     });
   }
 
+  Future<void> _regenerateQuestion(int index) async {
+    setState(() => _regeneratingQuestionIndex = index);
+    final generation = context.read<QuizGenerationProvider>();
+    final regenerated = await generation.regenerateQuestion(index);
+    if (!mounted) return;
+    if (regenerated) {
+      final replacement = generation.draftQuiz!.questions[index];
+      setState(() {
+        _questions[index].dispose();
+        _questions[index] = _QuestionDraft.fromQuestion(replacement);
+        _regeneratingQuestionIndex = null;
+      });
+    } else {
+      setState(() => _regeneratingQuestionIndex = null);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            generation.errorMessage ?? 'The question could not be regenerated.',
+          ),
+        ),
+      );
+    }
+  }
+
   Future<void> _save() async {
     FocusScope.of(context).unfocus();
     if (!_formKey.currentState!.validate()) return;
@@ -88,10 +115,41 @@ class _ManualQuizEditorScreenState extends State<ManualQuizEditorScreen> {
     final knowledgeBaseProvider = context.read<KnowledgeBaseProvider>();
     final now = DateTime.now();
     final existing = _initialQuiz;
+    var sourceDocumentId = existing?.sourceDocumentId;
+    final source = widget.sourceDocument;
+    if (source != null) {
+      try {
+        final duplicate = await sourceDocumentRepository.findDuplicate(source);
+        final effectiveSource = duplicate ?? source;
+        sourceDocumentId = effectiveSource.id;
+        if (duplicate == null) {
+          await sourceDocumentRepository.save(source);
+        }
+        final knowledgeBaseId = _knowledgeBaseId;
+        if (knowledgeBaseId != null) {
+          final attached = await knowledgeBaseProvider.attachSource(
+            knowledgeBaseId,
+            effectiveSource.id,
+          );
+          if (!attached) {
+            throw StateError('Knowledge-base attachment failed.');
+          }
+        }
+      } catch (_) {
+        if (!mounted) return;
+        setState(() => _isSaving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('The source could not be saved.')),
+        );
+        return;
+      }
+      if (!mounted) return;
+      await context.read<SourceDocumentProvider>().load();
+    }
     final quiz = QuizDefinition(
       id: existing?.id ?? savedQuizProvider.newId('quiz'),
       knowledgeBaseId: _knowledgeBaseId,
-      sourceDocumentId: widget.sourceDocument?.id ?? existing?.sourceDocumentId,
+      sourceDocumentId: sourceDocumentId,
       title: _titleController.text.trim(),
       questions: _questions
           .map(
@@ -103,40 +161,8 @@ class _ManualQuizEditorScreenState extends State<ManualQuizEditorScreen> {
       isArchived: existing?.isArchived ?? false,
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
+      timeLimitMinutes: existing?.timeLimitMinutes,
     );
-
-    final source = widget.sourceDocument;
-    if (source != null) {
-      try {
-        await sourceDocumentRepository.save(source);
-      } catch (_) {
-        if (!mounted) return;
-        setState(() => _isSaving = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('The source text could not be saved.')),
-        );
-        return;
-      }
-      final knowledgeBaseId = _knowledgeBaseId;
-      if (knowledgeBaseId != null) {
-        final attached = await knowledgeBaseProvider.attachSource(
-          knowledgeBaseId,
-          source.id,
-        );
-        if (!attached) {
-          if (!mounted) return;
-          setState(() => _isSaving = false);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'The source could not be added to that knowledge base.',
-              ),
-            ),
-          );
-          return;
-        }
-      }
-    }
 
     final saved = await savedQuizProvider.save(quiz);
     if (!mounted) return;
@@ -269,6 +295,9 @@ class _ManualQuizEditorScreenState extends State<ManualQuizEditorScreen> {
                   canMoveDown: index < _questions.length - 1,
                   onMoveUp: () => _moveQuestion(index, -1),
                   onMoveDown: () => _moveQuestion(index, 1),
+                  canRegenerate: _isGeneratedDraft,
+                  isRegenerating: _regeneratingQuestionIndex == index,
+                  onRegenerate: () => _regenerateQuestion(index),
                 ),
               );
             }),
@@ -342,6 +371,9 @@ class _QuestionEditorCard extends StatefulWidget {
   final bool canMoveDown;
   final VoidCallback onMoveUp;
   final VoidCallback onMoveDown;
+  final bool canRegenerate;
+  final bool isRegenerating;
+  final VoidCallback onRegenerate;
 
   const _QuestionEditorCard({
     required this.number,
@@ -352,6 +384,9 @@ class _QuestionEditorCard extends StatefulWidget {
     required this.canMoveDown,
     required this.onMoveUp,
     required this.onMoveDown,
+    required this.canRegenerate,
+    required this.isRegenerating,
+    required this.onRegenerate,
   });
 
   @override
@@ -409,38 +444,94 @@ class _QuestionEditorCardState extends State<_QuestionEditorCard> {
               validator: _requiredText,
             ),
             const SizedBox(height: 12),
-            ...widget.draft.optionControllers.indexed.map((entry) {
-              final (index, controller) = entry;
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: TextFormField(
-                  controller: controller,
-                  decoration: InputDecoration(
-                    labelText: 'Option ${optionIds[index].toUpperCase()}',
-                    border: const OutlineInputBorder(),
-                  ),
-                  validator: _requiredText,
-                ),
-              );
-            }),
-            DropdownButtonFormField<int>(
-              initialValue: widget.draft.correctOptionIndex,
+            DropdownButtonFormField<QuestionType>(
+              initialValue: widget.draft.type,
               decoration: const InputDecoration(
-                labelText: 'Correct answer',
+                labelText: 'Question type',
                 border: OutlineInputBorder(),
               ),
-              items: optionIds.indexed
-                  .map(
-                    (entry) => DropdownMenuItem(
-                      value: entry.$1,
-                      child: Text('Option ${entry.$2.toUpperCase()}'),
-                    ),
-                  )
-                  .toList(),
+              items: const [
+                DropdownMenuItem(
+                  value: QuestionType.multipleChoice,
+                  child: Text('Multiple choice'),
+                ),
+                DropdownMenuItem(
+                  value: QuestionType.typedAnswer,
+                  child: Text('Typed answer'),
+                ),
+              ],
               onChanged: (value) {
-                if (value != null) widget.draft.correctOptionIndex = value;
+                if (value != null) setState(() => widget.draft.type = value);
               },
             ),
+            const SizedBox(height: 12),
+            if (widget.draft.type == QuestionType.multipleChoice) ...[
+              ...widget.draft.optionControllers.indexed.map((entry) {
+                final (index, controller) = entry;
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: TextFormField(
+                    controller: controller,
+                    decoration: InputDecoration(
+                      labelText: 'Option ${optionIds[index].toUpperCase()}',
+                      border: const OutlineInputBorder(),
+                    ),
+                    validator: _requiredText,
+                  ),
+                );
+              }),
+              DropdownButtonFormField<int>(
+                initialValue: widget.draft.correctOptionIndex,
+                decoration: const InputDecoration(
+                  labelText: 'Correct answer',
+                  border: OutlineInputBorder(),
+                ),
+                items: optionIds.indexed
+                    .map(
+                      (entry) => DropdownMenuItem(
+                        value: entry.$1,
+                        child: Text('Option ${entry.$2.toUpperCase()}'),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (value) {
+                  if (value != null) widget.draft.correctOptionIndex = value;
+                },
+              ),
+            ] else ...[
+              TextFormField(
+                controller: widget.draft.correctAnswerController,
+                decoration: const InputDecoration(
+                  labelText: 'Correct typed answer',
+                  helperText: 'French accents are significant during scoring.',
+                  border: OutlineInputBorder(),
+                ),
+                validator: _requiredText,
+              ),
+              const SizedBox(height: 10),
+              TextFormField(
+                controller: widget.draft.acceptedAnswersController,
+                decoration: const InputDecoration(
+                  labelText: 'Accepted alternatives',
+                  helperText:
+                      'Optional; separate equivalent answers with semicolons.',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+            if (widget.canRegenerate) ...[
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: widget.isRegenerating ? null : widget.onRegenerate,
+                icon: widget.isRegenerating
+                    ? const SizedBox.square(
+                        dimension: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.auto_fix_high),
+                label: const Text('Regenerate this question'),
+              ),
+            ],
             if (widget.draft.explanation != null) ...[
               const SizedBox(height: 12),
               ExpansionTile(
@@ -476,6 +567,9 @@ class _QuestionDraft {
   final TextEditingController promptController;
   final List<TextEditingController> optionControllers;
   int correctOptionIndex;
+  QuestionType type;
+  final TextEditingController correctAnswerController;
+  final TextEditingController acceptedAnswersController;
   final QuestionExplanation? explanation;
   final List<Concept> concepts;
 
@@ -484,6 +578,9 @@ class _QuestionDraft {
     required this.promptController,
     required this.optionControllers,
     required this.correctOptionIndex,
+    required this.type,
+    required this.correctAnswerController,
+    required this.acceptedAnswersController,
     this.explanation,
     this.concepts = const [],
   });
@@ -492,6 +589,9 @@ class _QuestionDraft {
     promptController: TextEditingController(),
     optionControllers: List.generate(4, (_) => TextEditingController()),
     correctOptionIndex: 0,
+    type: QuestionType.multipleChoice,
+    correctAnswerController: TextEditingController(),
+    acceptedAnswersController: TextEditingController(),
   );
 
   factory _QuestionDraft.fromQuestion(QuestionDefinition question) {
@@ -511,6 +611,15 @@ class _QuestionDraft {
       promptController: TextEditingController(text: question.prompt),
       optionControllers: options,
       correctOptionIndex: correctIndex < 0 ? 0 : correctIndex,
+      type: question.type,
+      correctAnswerController: TextEditingController(
+        text: question.type == QuestionType.typedAnswer
+            ? question.correctAnswer
+            : '',
+      ),
+      acceptedAnswersController: TextEditingController(
+        text: question.acceptedAnswers.join('; '),
+      ),
       explanation: question.explanation,
       concepts: question.concepts,
     );
@@ -518,19 +627,31 @@ class _QuestionDraft {
 
   QuestionDefinition toQuestion(String questionId) {
     const optionIds = ['a', 'b', 'c', 'd'];
+    final typed = type == QuestionType.typedAnswer;
     return QuestionDefinition(
       id: questionId,
       prompt: promptController.text.trim(),
-      type: QuestionType.multipleChoice,
-      options: optionControllers.indexed
-          .map(
-            (entry) => AnswerOption(
-              id: optionIds[entry.$1],
-              text: entry.$2.text.trim(),
-            ),
-          )
-          .toList(),
-      correctAnswer: optionIds[correctOptionIndex],
+      type: type,
+      options: typed
+          ? const []
+          : optionControllers.indexed
+                .map(
+                  (entry) => AnswerOption(
+                    id: optionIds[entry.$1],
+                    text: entry.$2.text.trim(),
+                  ),
+                )
+                .toList(),
+      correctAnswer: typed
+          ? correctAnswerController.text.trim()
+          : optionIds[correctOptionIndex],
+      acceptedAnswers: typed
+          ? acceptedAnswersController.text
+                .split(';')
+                .map((value) => value.trim())
+                .where((value) => value.isNotEmpty)
+                .toList()
+          : const [],
       explanation: explanation,
       concepts: concepts,
     );
@@ -541,5 +662,7 @@ class _QuestionDraft {
     for (final controller in optionControllers) {
       controller.dispose();
     }
+    correctAnswerController.dispose();
+    acceptedAnswersController.dispose();
   }
 }

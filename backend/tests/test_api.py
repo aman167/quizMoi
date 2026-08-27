@@ -9,7 +9,12 @@ from app.main import (
     get_generator,
     get_web_article_retriever,
 )
-from app.schemas import GeneratePdfQuizRequest, GenerateQuizRequest, GeneratedQuizPayload
+from app.schemas import (
+    GenerateImageQuizRequest,
+    GeneratePdfQuizRequest,
+    GenerateQuizRequest,
+    GeneratedQuizPayload,
+)
 from app.service import InvalidGenerationError, validate_generated_quiz
 from app.web_article import WebArticleContent, WebArticleError
 
@@ -47,6 +52,7 @@ class FakeGenerator:
     def __init__(self) -> None:
         self.text_call_count = 0
         self.pdf_call_count = 0
+        self.image_call_count = 0
 
     async def generate(self, _request: GenerateQuizRequest) -> GeneratedQuizPayload:
         self.text_call_count += 1
@@ -59,6 +65,16 @@ class FakeGenerator:
         _file_name: str,
     ) -> GeneratedQuizPayload:
         self.pdf_call_count += 1
+        return _payload()
+
+    async def generate_image(
+        self,
+        _request: GenerateImageQuizRequest,
+        _image_bytes: bytes,
+        _file_name: str,
+        _mime_type: str,
+    ) -> GeneratedQuizPayload:
+        self.image_call_count += 1
         return _payload()
 
 
@@ -243,6 +259,56 @@ def test_pdf_route_rejects_content_without_a_pdf_signature() -> None:
     assert response.json()["detail"]["code"] == "invalid_pdf"
 
 
+def test_image_is_passed_to_generation_and_returns_the_quiz_contract() -> None:
+    generator = FakeGenerator()
+    app.dependency_overrides[get_generator] = lambda: generator
+    with TestClient(app) as client:
+        response = client.post(
+            "/v1/quizzes/generate-image",
+            data={
+                "schemaVersion": "1",
+                "requestId": "generation-image-contract",
+                "sourceTitle": "French camera lesson",
+                "cefrLevel": "B1",
+                "difficulty": "medium",
+                "questionCount": "5",
+                "questionTypes": "multipleChoice",
+            },
+            files={
+                "file": (
+                    "lesson.png",
+                    b"\x89PNG\r\n\x1a\nquizMoi test image",
+                    "image/png",
+                )
+            },
+        )
+
+    assert response.status_code == 200
+    assert response.json()["requestId"] == "generation-image-contract"
+    assert len(response.json()["questions"]) == 5
+    assert generator.image_call_count == 1
+
+
+def test_image_route_rejects_mismatched_image_content() -> None:
+    with TestClient(app) as client:
+        response = client.post(
+            "/v1/quizzes/generate-image",
+            data={
+                "schemaVersion": "1",
+                "requestId": "generation-invalid-image",
+                "sourceTitle": "Invalid camera image",
+                "cefrLevel": "B1",
+                "difficulty": "medium",
+                "questionCount": "5",
+                "questionTypes": "multipleChoice",
+            },
+            files={"file": ("lesson.png", b"plain text", "image/png")},
+        )
+
+    assert response.status_code == 400
+    assert response.json()["detail"]["code"] == "invalid_image"
+
+
 def test_grounding_rejects_an_excerpt_not_in_the_source() -> None:
     request = GenerateQuizRequest.model_validate(
         {
@@ -340,7 +406,9 @@ def test_reusing_request_id_for_different_content_is_rejected() -> None:
         "questionTypes": ["multipleChoice"],
     }
     changed = dict(original)
-    changed["sourceText"] = ("Paul prend le bus chaque matin. " * 12).strip()
+    changed["sourceText"] = (
+        "Paul prend le bus dans la ville chaque matin pour aller au travail. " * 12
+    ).strip()
 
     with TestClient(app) as client:
         first = client.post("/v1/quizzes/generate", json=original)

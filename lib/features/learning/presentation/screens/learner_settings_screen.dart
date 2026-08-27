@@ -3,9 +3,16 @@ import 'package:provider/provider.dart';
 
 import '../../../../theme/app_colors.dart';
 import '../state/learner_settings_provider.dart';
+import '../services/notification_permission_gateway.dart';
 
 class LearnerSettingsScreen extends StatelessWidget {
-  const LearnerSettingsScreen({super.key});
+  final NotificationPermissionGateway? notificationPermissionGateway;
+
+  const LearnerSettingsScreen({super.key, this.notificationPermissionGateway});
+
+  NotificationPermissionGateway get _notificationPermissionGateway =>
+      notificationPermissionGateway ??
+      const AndroidNotificationPermissionGateway();
 
   Future<void> _update(
     BuildContext context, {
@@ -28,6 +35,24 @@ class LearnerSettingsScreen extends StatelessWidget {
         ),
       );
     }
+  }
+
+  Future<void> _setReminders(BuildContext context, bool enabled) async {
+    if (enabled) {
+      final granted = await _notificationPermissionGateway.requestPermission();
+      if (!context.mounted) return;
+      if (!granted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Notification permission was not granted. Reminders remain off; you can enable permission later in Android settings.',
+            ),
+          ),
+        );
+        return;
+      }
+    }
+    await _update(context, remindersEnabled: enabled);
   }
 
   @override
@@ -165,11 +190,11 @@ class LearnerSettingsScreen extends StatelessWidget {
                     value: settings.remindersEnabled,
                     onChanged: provider.isSaving
                         ? null
-                        : (value) => _update(context, remindersEnabled: value),
+                        : (value) => _setReminders(context, value),
                     secondary: const Icon(Icons.notifications_outlined),
                     title: const Text('Study-reminder preference'),
                     subtitle: const Text(
-                      'Saved locally now. Android notifications will be connected in a later phase.',
+                      'Android permission is requested only when you turn reminders on. Turning them off keeps the permission request dormant.',
                     ),
                   ),
                 ),

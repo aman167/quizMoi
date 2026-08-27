@@ -1,8 +1,17 @@
-enum SourceType { pastedText, pdf, webArticle, manual }
+enum SourceType { pastedText, pdf, image, webArticle, manual }
 
 enum QuestionType { multipleChoice, typedAnswer }
 
 enum AttemptStatus { inProgress, completed }
+
+String normalizeLearningAnswer(String value) {
+  return value
+      .trim()
+      .toLowerCase()
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .replaceAll(RegExp(r'[.!?;,]+$'), '')
+      .trim();
+}
 
 T _enumByName<T extends Enum>(Iterable<T> values, String name) {
   return values.firstWhere(
@@ -209,6 +218,7 @@ class QuestionDefinition {
   final QuestionType type;
   final List<AnswerOption> options;
   final String correctAnswer;
+  final List<String> acceptedAnswers;
   final QuestionExplanation? explanation;
   final List<Concept> concepts;
 
@@ -218,9 +228,11 @@ class QuestionDefinition {
     required this.type,
     required List<AnswerOption> options,
     required this.correctAnswer,
+    List<String> acceptedAnswers = const [],
     this.explanation,
     List<Concept> concepts = const [],
   }) : options = List.unmodifiable(options),
+       acceptedAnswers = List.unmodifiable(acceptedAnswers),
        concepts = List.unmodifiable(concepts) {
     if (prompt.trim().isEmpty) {
       throw ArgumentError.value(prompt, 'prompt', 'Prompt cannot be empty.');
@@ -236,6 +248,13 @@ class QuestionDefinition {
           'The correct answer must match one of the option ids.',
         );
       }
+    } else {
+      if (correctAnswer.trim().isEmpty) {
+        throw ArgumentError('Typed-answer questions need a correct answer.');
+      }
+      if (options.isNotEmpty) {
+        throw ArgumentError('Typed-answer questions cannot contain options.');
+      }
     }
   }
 
@@ -245,6 +264,7 @@ class QuestionDefinition {
     'type': type.name,
     'options': options.map((option) => option.toJson()).toList(),
     'correctAnswer': correctAnswer,
+    'acceptedAnswers': acceptedAnswers,
     'explanation': explanation?.toJson(),
     'concepts': concepts.map((concept) => concept.toJson()).toList(),
   };
@@ -260,6 +280,8 @@ class QuestionDefinition {
           .map(AnswerOption.fromJson)
           .toList(),
       correctAnswer: json['correctAnswer']! as String,
+      acceptedAnswers: (json['acceptedAnswers'] as List<Object?>? ?? const [])
+          .cast<String>(),
       explanation: explanation == null
           ? null
           : QuestionExplanation.fromJson(explanation as Map<String, Object?>),
@@ -268,6 +290,16 @@ class QuestionDefinition {
           .map(Concept.fromJson)
           .toList(),
     );
+  }
+
+  bool isCorrectAnswer(String? value) {
+    if (value == null) return false;
+    if (type == QuestionType.multipleChoice) return value == correctAnswer;
+    final normalized = normalizeLearningAnswer(value);
+    return <String>[
+      correctAnswer,
+      ...acceptedAnswers,
+    ].map(normalizeLearningAnswer).contains(normalized);
   }
 }
 
@@ -280,6 +312,7 @@ class QuizDefinition {
   final bool isArchived;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final int? timeLimitMinutes;
 
   QuizDefinition({
     required this.id,
@@ -290,6 +323,7 @@ class QuizDefinition {
     this.isArchived = false,
     required this.createdAt,
     required this.updatedAt,
+    this.timeLimitMinutes,
   }) : questions = List.unmodifiable(questions) {
     if (title.trim().isEmpty) {
       throw ArgumentError.value(title, 'title', 'Title cannot be empty.');
@@ -308,6 +342,8 @@ class QuizDefinition {
     bool? isArchived,
     DateTime? createdAt,
     DateTime? updatedAt,
+    int? timeLimitMinutes,
+    bool clearTimeLimit = false,
   }) {
     return QuizDefinition(
       id: id ?? this.id,
@@ -318,6 +354,9 @@ class QuizDefinition {
       isArchived: isArchived ?? this.isArchived,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      timeLimitMinutes: clearTimeLimit
+          ? null
+          : timeLimitMinutes ?? this.timeLimitMinutes,
     );
   }
 
@@ -330,6 +369,7 @@ class QuizDefinition {
     'isArchived': isArchived,
     'createdAt': createdAt.toIso8601String(),
     'updatedAt': updatedAt.toIso8601String(),
+    'timeLimitMinutes': timeLimitMinutes,
   };
 
   factory QuizDefinition.fromJson(Map<String, Object?> json) => QuizDefinition(
@@ -344,6 +384,7 @@ class QuizDefinition {
     isArchived: json['isArchived']! as bool,
     createdAt: DateTime.parse(json['createdAt']! as String),
     updatedAt: DateTime.parse(json['updatedAt']! as String),
+    timeLimitMinutes: json['timeLimitMinutes'] as int?,
   );
 }
 

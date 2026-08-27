@@ -14,6 +14,7 @@ class AiTutorCard extends StatelessWidget {
 
   String _getOptionText(String? optionId) {
     if (optionId == null) return 'None selected';
+    if (question.isTypedAnswer) return optionId;
     final option = question.options.firstWhere(
       (o) => o.id == optionId,
       orElse: () => QuizOption(id: '', text: 'Unknown'),

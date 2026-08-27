@@ -63,7 +63,7 @@ void main() {
       ),
     );
 
-    await tester.tap(find.text('Create Knowledge Base'));
+    await tester.tap(find.text('Create folder'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextFormField), 'Grammar Practice');
     await tester.tap(find.text('Create'));

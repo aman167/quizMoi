@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 
 import '../../learning/domain/entities/learning_entities.dart';
 import '../domain/quiz_generation_gateway.dart';
@@ -42,7 +43,7 @@ class HttpQuizGenerationGateway implements QuizGenerationGateway {
       }
       final text = _requiredString(body, 'text');
       final characterCount = body['characterCount']! as int;
-      if (characterCount < 200 || characterCount > 12000 || text.length < 200) {
+      if (characterCount < 200 || characterCount > 60000 || text.length < 200) {
         throw const FormatException('Invalid article text length.');
       }
       return WebArticleSourcePreview(
@@ -122,7 +123,9 @@ class HttpQuizGenerationGateway implements QuizGenerationGateway {
               'cefrLevel': request.cefrLevel,
               'difficulty': request.difficulty,
               'questionCount': request.questionCount.toString(),
-              'questionTypes': 'multipleChoice',
+              'questionTypes': request.questionTypes
+                  .map((type) => type.name)
+                  .join(','),
             })
             ..files.add(
               http.MultipartFile.fromBytes(
@@ -144,6 +147,59 @@ class HttpQuizGenerationGateway implements QuizGenerationGateway {
       throw const QuizGenerationException(
         'generation_timeout',
         'PDF quiz generation took too long. Your selected file is still available, so you can retry.',
+      );
+    } on http.ClientException {
+      throw await _classifyConnectionFailure();
+    } on FormatException {
+      throw const QuizGenerationException(
+        'invalid_generation',
+        'The server returned quiz data the app could not understand. Please retry.',
+      );
+    }
+  }
+
+  @override
+  Future<GeneratedQuizDraft> generateImage(
+    ImageQuizGenerationRequest request,
+  ) async {
+    try {
+      final multipart =
+          http.MultipartRequest(
+              'POST',
+              baseUri.resolve('/v1/quizzes/generate-image'),
+            )
+            ..fields.addAll({
+              'schemaVersion': request.schemaVersion.toString(),
+              'requestId': request.requestId,
+              'sourceTitle': request.sourceTitle,
+              'cefrLevel': request.cefrLevel,
+              'difficulty': request.difficulty,
+              'questionCount': request.questionCount.toString(),
+              'questionTypes': request.questionTypes
+                  .map((type) => type.name)
+                  .join(','),
+            })
+            ..files.add(
+              http.MultipartFile.fromBytes(
+                'file',
+                request.imageBytes,
+                filename: request.fileName,
+                contentType: MediaType.parse(request.mimeType),
+              ),
+            );
+      final streamed = await _client.send(multipart).timeout(pdfTimeout);
+      final response = await http.Response.fromStream(streamed);
+      final body = _decodeObject(response.body);
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw _errorFromResponse(response.statusCode, body);
+      }
+      return _parseDraft(body, expectedRequestId: request.requestId);
+    } on QuizGenerationException {
+      rethrow;
+    } on TimeoutException {
+      throw const QuizGenerationException(
+        'generation_timeout',
+        'Image quiz generation took too long. Your photograph is still available, so you can retry.',
       );
     } on http.ClientException {
       throw await _classifyConnectionFailure();
@@ -234,9 +290,13 @@ class HttpQuizGenerationGateway implements QuizGenerationGateway {
     Map<String, Object?> json,
     int questionIndex,
   ) {
+    final typeName = json['questionType'] as String? ?? 'multipleChoice';
+    final type = QuestionType.values.byName(typeName);
     final optionValues = json['options'];
-    if (optionValues is! List<Object?> || optionValues.length != 4) {
-      throw const FormatException('Four options are required.');
+    if (optionValues is! List<Object?> ||
+        (type == QuestionType.multipleChoice && optionValues.length != 4) ||
+        (type == QuestionType.typedAnswer && optionValues.isNotEmpty)) {
+      throw const FormatException('Invalid options for question type.');
     }
     final options = optionValues.map((value) {
       if (value is! Map<String, Object?>) {
@@ -251,12 +311,19 @@ class HttpQuizGenerationGateway implements QuizGenerationGateway {
     final optionText = options
         .map((option) => option.text.toLowerCase())
         .toSet();
-    final correctOptionId = _requiredString(json, 'correctOptionId');
-    if (optionIds.length != 4 ||
-        optionText.length != 4 ||
-        !optionIds.contains(correctOptionId)) {
+    final correctAnswer = type == QuestionType.multipleChoice
+        ? _requiredString(json, 'correctOptionId')
+        : _requiredString(json, 'correctAnswer');
+    if (type == QuestionType.multipleChoice &&
+        (optionIds.length != 4 ||
+            optionText.length != 4 ||
+            !optionIds.contains(correctAnswer))) {
       throw const FormatException('Invalid answer options.');
     }
+    final acceptedValues = json['acceptedAnswers'];
+    final acceptedAnswers = acceptedValues is List<Object?>
+        ? acceptedValues.cast<String>()
+        : const <String>[];
     final conceptValues = json['concepts'];
     if (conceptValues is! List<Object?> || conceptValues.isEmpty) {
       throw const FormatException('Concepts are required.');
@@ -274,8 +341,10 @@ class HttpQuizGenerationGateway implements QuizGenerationGateway {
     }).toList();
     return GeneratedQuestionDraft(
       prompt: _requiredString(json, 'prompt'),
+      type: type,
       options: options,
-      correctOptionId: correctOptionId,
+      correctAnswer: correctAnswer,
+      acceptedAnswers: acceptedAnswers,
       explanation: QuestionExplanation(
         text: _requiredString(json, 'explanation'),
         sourceExcerpt: _requiredString(json, 'sourceExcerpt'),

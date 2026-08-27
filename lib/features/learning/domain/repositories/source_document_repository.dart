@@ -7,5 +7,7 @@ abstract interface class SourceDocumentRepository {
 
   Future<void> save(SourceDocument source);
 
+  Future<SourceDocument?> findDuplicate(SourceDocument source);
+
   Future<void> delete(String id);
 }

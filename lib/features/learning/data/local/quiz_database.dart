@@ -2,7 +2,7 @@ import 'package:path/path.dart' as path;
 import 'package:sqflite/sqflite.dart' as sqflite;
 
 class QuizDatabase {
-  static const schemaVersion = 4;
+  static const schemaVersion = 5;
   static const databaseName = 'quiz_moi.sqlite';
 
   final sqflite.Database connection;
@@ -39,6 +39,10 @@ class QuizDatabase {
   ) async {
     final sourceDocumentColumn = version >= 3 ? 'source_document_id TEXT,' : '';
     final sourceUriColumn = version >= 4 ? 'source_uri TEXT,' : '';
+    final quizTimeLimitColumn = version >= 5
+        ? 'time_limit_minutes INTEGER,'
+        : '';
+    final acceptedAnswersColumn = version >= 5 ? 'accepted_answers TEXT,' : '';
     final sourceDocumentForeignKey = version >= 3
         ? ', FOREIGN KEY (source_document_id) REFERENCES source_documents(id) ON DELETE SET NULL'
         : '';
@@ -84,6 +88,7 @@ class QuizDatabase {
         id TEXT PRIMARY KEY,
         knowledge_base_id TEXT,
         $sourceDocumentColumn
+        $quizTimeLimitColumn
         title TEXT NOT NULL,
         is_archived INTEGER NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL,
@@ -100,6 +105,7 @@ class QuizDatabase {
         position INTEGER NOT NULL,
         prompt TEXT NOT NULL,
         question_type TEXT NOT NULL,
+        $acceptedAnswersColumn
         correct_answer TEXT NOT NULL,
         FOREIGN KEY (quiz_id) REFERENCES quizzes(id) ON DELETE CASCADE
       )
@@ -193,6 +199,14 @@ class QuizDatabase {
     if (oldVersion < 4) {
       await database.execute(
         'ALTER TABLE source_documents ADD COLUMN source_uri TEXT',
+      );
+    }
+    if (oldVersion < 5) {
+      await database.execute(
+        'ALTER TABLE quizzes ADD COLUMN time_limit_minutes INTEGER',
+      );
+      await database.execute(
+        'ALTER TABLE questions ADD COLUMN accepted_answers TEXT',
       );
     }
   }

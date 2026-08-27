@@ -8,7 +8,7 @@ Last restructured: 2026-08-17
 - [x] Phase 1 — Stabilize the prototype and define behavior (completed 2026-08-17)
 - [x] Phase 2 — Build the real local learning core (completed 2026-08-17)
 - [x] Phase 3 — Complete the AI learning prototype (completed 2026-08-17)
-- [ ] Phase 4 — Complete the Version 1 feature breadth
+- [ ] Phase 4 — Complete the Version 1 feature breadth (implementation complete; Android acceptance pending)
 - [ ] Phase 5 — Self-use alpha
 - [ ] Phase 6 — Hosted private beta
 - [ ] Phase 7 — Reliability and polish
@@ -21,6 +21,8 @@ Phase 1 completion evidence: analyzer findings were cleared; quiz navigation, co
 Phase 2 completion evidence: SQLite-backed repositories persist knowledge bases, manual quizzes, in-progress sessions, attempts, learner settings, real history, accuracy, goals, and streaks. Schema version 2 upgrades version-1 data without loss, restart behavior is covered end to end, and 48 Flutter tests pass.
 
 Phase 3 completion evidence: a real Android-emulator test sent pasted French text through the local FastAPI backend and OpenAI, returned ten structured multiple-choice questions, saved the generated source and quiz, completed and scored the attempt, and reflected the result on the dashboard. Automated backend, Flutter, persistence, restart, analyzer, and debug-APK checks pass. UX and metric findings discovered during self-use remain tracked in `DEFECT_LOG.md` and do not invalidate the working source-to-feedback integration.
+
+Phase 4 implementation evidence: camera image input, typed answers, session controls, interactive generation settings, option randomization, personalized review, long-source handling, duplicate/deletion controls, and opt-in notification permission are implemented. The analyzer is clean, 77 Flutter tests and 18 backend tests pass, the backend compiles, secret scanning is clean, and a debug APK builds. Final Phase 4 completion still requires the owner's Android acceptance pass with one real camera/OpenAI request and verification of `QM-005`.
 
 ## Build-first method
 
@@ -100,28 +102,30 @@ Exit criteria: pasted French text produces an editable ten-question MCQ quiz; th
 - [x] Confirm the generated PDF quiz and completed attempt survive closing the app, clearing recent apps, and reopening quizMoi.
 - [x] Implement `QM-004` response recovery with a stable client request ID, temporary backend result retention, duplicate-provider-call prevention, accurate recovery language, and focused automated tests.
 - [x] Manually verify `QM-004` on the emulator: interrupt one live PDF generation response, preserve the selected source, restore connectivity, and recover the generated quiz through the retained request (completed 2026-08-27). The full-network outage correctly used **Retry** while offline; focused widget coverage verifies **Recover Result** when the backend health probe succeeds.
-- [ ] Add on-demand Android camera permission, capture/retake, image preview, size/orientation checks, and explicit confirmation before upload.
-- [ ] Send a confirmed study image through FastAPI as OpenAI image input and reuse the same structured ten-question generation, save, testing, feedback, and persistence flow.
+- [x] Add on-demand Android camera permission, capture/retake, image preview, size/orientation checks, and explicit confirmation before upload.
+- [x] Send a confirmed study image through FastAPI as OpenAI image input and reuse the same structured generation, save, testing, feedback, and persistence flow.
 - [x] Add a public web-article URL field, backend retrieval, cleaned-text preview, explicit confirmation, and clear unsupported/paywalled/unreachable errors.
 - [x] Restrict web retrieval to public HTTP/HTTPS destinations, revalidate redirects, reject private-network targets and non-text content, cap downloads at 2 MB, and truncate cleaned study text safely to 12,000 characters.
 - [x] Connect confirmed article text to the existing idempotent AI generation, editable draft, local save, testing, feedback, and persistence flow; SQLite schema version 4 retains the final article URL alongside its cleaned text.
 - [x] Verify backend extraction against a live public French Wikipedia article without spending an AI request; focused backend, gateway, provider, migration, persistence, and widget tests pass.
 - [x] Manually accept one real web-article-to-quiz OpenAI request on the emulator, save and complete it, then confirm the article URL, cleaned text, quiz, and attempt survive restart (completed 2026-08-27 with the French Wikipedia article **Pain**). The dashboard restored 55.1% aggregate accuracy, 10 / 10 questions today, and the named 100% attempt in Recent Attempts. The generated quiz placed every correct answer in option A; this separate quality issue is tracked as `QM-005`.
-- Add chunking beyond the first 12,000 characters, language checks, duplicate detection, and source deletion controls.
+- [x] Accept sources up to 60,000 characters and sample beginning, middle, and ending chunks within a 12,000-character model budget.
+- [x] Add a French-language heuristic, duplicate-source reuse, and safe source deletion that preserves linked quizzes and attempts.
 
 ### Quiz types and controls
 
-- Add typed-answer authoring, generation, input, restoration, and deterministic scoring.
-- Document normalization for whitespace, capitalization, punctuation, accents, alternatives, and partial credit.
-- Add skip/review, pause/resume, optional limits, question timing, and answer history.
-- Make difficulty, count, and type controls interactive.
-- Add individual-question regeneration.
+- [x] Add typed-answer authoring, generation, input, restoration, and deterministic scoring.
+- [x] Ignore surrounding/collapsed whitespace, capitalization, and trailing punctuation; preserve accent significance; accept configured alternatives; use full or zero credit.
+- [x] Add skip/review, pause/resume, optional limits, question timing, and answer history.
+- [x] Make difficulty, count, type, and optional-time-limit controls interactive.
+- [x] Add individual-question regeneration.
+- [x] Randomize generated MCQ option positions while preserving stable IDs and correct-answer mapping (`QM-005` ready for emulator verification).
 
 ### Personalized recall
 
-- Build weak-concept tracking, documented mastery rules, and a daily review queue.
-- Make recommendations actionable and explain their reason.
-- Request notification permission only after reminders are enabled.
+- [x] Build weak-concept tracking, documented mastery rules, and a daily review queue.
+- [x] Make recommendations actionable and explain their reason.
+- [x] Request notification permission only after reminders are enabled; keep reminders disabled if permission is denied.
 
 Exit criteria: text, PDF, camera image, and supported URL sources work; MCQ and typed-answer quizzes can be generated and completed; review recommendations derive from real performance.
 
@@ -180,7 +184,6 @@ Exit criteria: text, PDF, camera image, and supported URL sources work; MCQ and 
 
 ## Immediate backlog
 
-1. Add the planned camera-image source journey.
-2. Correct generated-answer position bias (`QM-005`) before routine self-use.
-3. Add typed-answer questions and deterministic normalization/scoring.
-4. Add the remaining session controls, generation settings, weak-concept mastery, and daily review queue.
+1. Run the Phase 4 Android acceptance pass, including one real camera-image/OpenAI journey and answer-position verification.
+2. Resolve or explicitly defer the remaining logged self-use defects before Phase 5 metrics are trusted.
+3. Begin Phase 5 daily self-use on the emulator and the owner's physical Android phone.

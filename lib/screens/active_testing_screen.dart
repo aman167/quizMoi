@@ -17,6 +17,7 @@ class _ActiveTestingScreenState extends State<ActiveTestingScreen>
     with WidgetsBindingObserver {
   Timer? _timer;
   bool _allowPop = false;
+  bool _openingResults = false;
 
   Future<bool> _confirmAction({
     required String title,
@@ -72,29 +73,76 @@ class _ActiveTestingScreenState extends State<ActiveTestingScreen>
     final confirmed = await _confirmAction(
       title: 'Submit this quiz?',
       message:
-          'You answered all ${provider.currentQuiz!.totalQuestions} questions. Your answers cannot be changed after submission.',
+          'You answered ${provider.currentQuiz!.answeredCount} of ${provider.currentQuiz!.totalQuestions} questions. Unanswered questions will be marked incorrect and answers cannot be changed after submission.',
       confirmLabel: 'Submit quiz',
     );
     if (!confirmed || !mounted) return;
 
-    if (!provider.nextQuestion()) return;
+    if (!provider.completeQuiz()) return;
     await provider.persistSession();
+    await _openResults();
+  }
+
+  Future<void> _pauseQuiz(QuizProvider provider) async {
+    await provider.pauseQuiz();
     if (!mounted) return;
     setState(() => _allowPop = true);
-    Navigator.pushReplacement(
+    Navigator.pop(context);
+  }
+
+  Future<void> _openResults() async {
+    if (!mounted || _openingResults) return;
+    _openingResults = true;
+    setState(() => _allowPop = true);
+    await Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (context) => const ResultsFeedbackScreen()),
     );
+  }
+
+  Future<void> _showAnswerReview(QuizProvider provider) async {
+    final quiz = provider.currentQuiz!;
+    final selectedIndex = await showDialog<int>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Review answers'),
+        content: SizedBox(
+          width: 420,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: quiz.questions.length,
+            itemBuilder: (context, index) {
+              final question = quiz.questions[index];
+              return ListTile(
+                leading: Icon(
+                  question.isAnswered
+                      ? Icons.check_circle_outline
+                      : Icons.radio_button_unchecked,
+                ),
+                title: Text('Question ${index + 1}'),
+                subtitle: Text(question.isAnswered ? 'Answered' : 'Skipped'),
+                onTap: () => Navigator.pop(dialogContext, index),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+    if (selectedIndex != null) provider.goToQuestion(selectedIndex);
   }
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) async {
       final provider = Provider.of<QuizProvider>(context, listen: false);
       if (!provider.quizCompleted) {
-        provider.incrementTimer();
+        final expired = provider.incrementTimer();
+        if (expired) {
+          await provider.persistSession();
+          await _openResults();
+        }
       }
     });
   }
@@ -273,7 +321,9 @@ class _ActiveTestingScreenState extends State<ActiveTestingScreen>
                                     ),
                                     const SizedBox(width: 4),
                                     Text(
-                                      provider.formattedTime,
+                                      provider.remainingSeconds == null
+                                          ? provider.formattedTime
+                                          : '${provider.remainingSeconds! ~/ 60}m ${(provider.remainingSeconds! % 60).toString().padLeft(2, '0')}s left',
                                       style: const TextStyle(
                                         fontSize: 11,
                                         fontWeight: FontWeight.bold,
@@ -285,6 +335,14 @@ class _ActiveTestingScreenState extends State<ActiveTestingScreen>
                               const SizedBox(width: 6),
 
                               // Restart Pill
+                              IconButton(
+                                icon: const Icon(Icons.pause, size: 18),
+                                onPressed: () => _pauseQuiz(provider),
+                                tooltip: 'Pause Quiz',
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                              ),
+                              const SizedBox(width: 10),
                               IconButton(
                                 icon: const Icon(Icons.refresh, size: 18),
                                 onPressed: () => _restartQuiz(provider),
@@ -431,7 +489,9 @@ class _ActiveTestingScreenState extends State<ActiveTestingScreen>
                                         borderRadius: BorderRadius.circular(12),
                                       ),
                                       child: Text(
-                                        'MULTIPLE CHOICE',
+                                        currentQuestion.isTypedAnswer
+                                            ? 'TYPED ANSWER'
+                                            : 'MULTIPLE CHOICE',
                                         style: TextStyle(
                                           fontSize: 10,
                                           fontWeight: FontWeight.bold,
@@ -455,19 +515,37 @@ class _ActiveTestingScreenState extends State<ActiveTestingScreen>
                                 ),
                                 const SizedBox(height: 20),
 
-                                // Options List
-                                ...currentQuestion.options.map((opt) {
-                                  final isSelected =
-                                      currentQuestion.selectedOptionId ==
-                                      opt.id;
-                                  return QuestionOptionTile(
-                                    option: opt,
-                                    isSelected: isSelected,
-                                    onTap: () {
-                                      provider.selectOption(opt.id);
-                                    },
-                                  );
-                                }),
+                                if (currentQuestion.isTypedAnswer)
+                                  TextFormField(
+                                    key: ValueKey(
+                                      'typed-answer-${currentQuestion.number}',
+                                    ),
+                                    initialValue:
+                                        currentQuestion.selectedOptionId,
+                                    minLines: 1,
+                                    maxLines: 3,
+                                    autocorrect: false,
+                                    decoration: const InputDecoration(
+                                      labelText: 'Type your answer in French',
+                                      helperText:
+                                          'Case and trailing punctuation are ignored; accents remain significant.',
+                                      border: OutlineInputBorder(),
+                                    ),
+                                    onChanged: provider.enterTypedAnswer,
+                                  )
+                                else
+                                  ...currentQuestion.options.map((opt) {
+                                    final isSelected =
+                                        currentQuestion.selectedOptionId ==
+                                        opt.id;
+                                    return QuestionOptionTile(
+                                      option: opt,
+                                      isSelected: isSelected,
+                                      onTap: () {
+                                        provider.selectOption(opt.id);
+                                      },
+                                    );
+                                  }),
                               ],
                             ),
                           ),
@@ -496,56 +574,84 @@ class _ActiveTestingScreenState extends State<ActiveTestingScreen>
                           ),
                         ),
                         const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: OutlinedButton.icon(
-                                onPressed: provider.currentQuestionIndex > 0
-                                    ? provider.previousQuestion
-                                    : null,
-                                icon: const Icon(Icons.arrow_back, size: 16),
-                                label: const Text('Previous'),
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: AppColors.onSurfaceVariant,
-                                  side: BorderSide(
-                                    color: AppColors.outlineVariant,
-                                  ),
-                                  minimumSize: const Size.fromHeight(48),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
+                        OutlinedButton.icon(
+                          onPressed: () => _showAnswerReview(provider),
+                          icon: const Icon(Icons.fact_check_outlined),
+                          label: const Text('Review Answers'),
+                          style: OutlinedButton.styleFrom(
+                            minimumSize: const Size.fromHeight(42),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        LayoutBuilder(
+                          builder: (context, constraints) {
+                            final compact = constraints.maxWidth < 350;
+                            final previous = OutlinedButton.icon(
+                              onPressed: provider.currentQuestionIndex > 0
+                                  ? provider.previousQuestion
+                                  : null,
+                              icon: const Icon(Icons.arrow_back, size: 16),
+                              label: const Text('Previous'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: AppColors.onSurfaceVariant,
+                                side: BorderSide(
+                                  color: AppColors.outlineVariant,
+                                ),
+                                minimumSize: const Size.fromHeight(48),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20),
                                 ),
                               ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: ElevatedButton.icon(
-                                onPressed: provider.canAdvance
-                                    ? () {
-                                        if (isLastQuestion) {
-                                          _submitQuiz(provider);
-                                        } else {
-                                          provider.nextQuestion();
-                                        }
-                                      }
-                                    : null,
-                                icon: Text(isLastQuestion ? 'Submit' : 'Next'),
-                                label: const Icon(
-                                  Icons.arrow_forward,
-                                  size: 16,
-                                ),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.primary,
-                                  foregroundColor: AppColors.onPrimary,
-                                  elevation: 0,
-                                  minimumSize: const Size.fromHeight(48),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
+                            );
+                            final skip = TextButton(
+                              onPressed: provider.skipQuestion,
+                              child: const Text('Skip'),
+                            );
+                            final next = ElevatedButton.icon(
+                              onPressed: isLastQuestion
+                                  ? () => _submitQuiz(provider)
+                                  : provider.canAdvance
+                                  ? provider.nextQuestion
+                                  : null,
+                              icon: Text(isLastQuestion ? 'Submit' : 'Next'),
+                              label: const Icon(Icons.arrow_forward, size: 16),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                                foregroundColor: AppColors.onPrimary,
+                                elevation: 0,
+                                minimumSize: const Size.fromHeight(48),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20),
                                 ),
                               ),
-                            ),
-                          ],
+                            );
+                            if (compact) {
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Expanded(child: previous),
+                                      const SizedBox(width: 8),
+                                      Expanded(child: next),
+                                    ],
+                                  ),
+                                  if (!isLastQuestion) skip,
+                                ],
+                              );
+                            }
+                            return Row(
+                              children: [
+                                Expanded(child: previous),
+                                const SizedBox(width: 12),
+                                if (!isLastQuestion) ...[
+                                  Expanded(child: skip),
+                                  const SizedBox(width: 12),
+                                ],
+                                Expanded(child: next),
+                              ],
+                            );
+                          },
                         ),
                       ],
                     ),

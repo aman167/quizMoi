@@ -25,6 +25,7 @@ import 'features/learning/presentation/state/saved_quiz_provider.dart';
 import 'features/learning/presentation/state/attempt_history_provider.dart';
 import 'features/learning/presentation/state/knowledge_base_provider.dart';
 import 'features/learning/presentation/state/learner_settings_provider.dart';
+import 'features/learning/presentation/state/source_document_provider.dart';
 import 'features/learning/presentation/screens/learner_settings_screen.dart';
 import 'features/quiz_generation/data/http_quiz_generation_gateway.dart';
 import 'features/quiz_generation/domain/quiz_generation_gateway.dart';
@@ -85,6 +86,10 @@ class QuizMoiApp extends StatelessWidget {
       providers: [
         Provider<SourceDocumentRepository>.value(
           value: effectiveSourceDocumentRepository,
+        ),
+        ChangeNotifierProvider(
+          create: (_) =>
+              SourceDocumentProvider(effectiveSourceDocumentRepository)..load(),
         ),
         ChangeNotifierProvider(
           create: (_) =>

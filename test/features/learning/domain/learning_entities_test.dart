@@ -57,6 +57,22 @@ void main() {
         throwsArgumentError,
       );
     });
+
+    test('typed answers use deterministic normalization and alternatives', () {
+      final question = QuestionDefinition(
+        id: 'typed-1',
+        prompt: 'Comment dit-on hello ?',
+        type: QuestionType.typedAnswer,
+        options: const [],
+        correctAnswer: 'Bonjour',
+        acceptedAnswers: const ['Salut'],
+      );
+
+      expect(question.isCorrectAnswer('  bonjour!  '), isTrue);
+      expect(question.isCorrectAnswer('SALUT.'), isTrue);
+      expect(question.isCorrectAnswer('Bon jour'), isFalse);
+      expect(question.isCorrectAnswer('Bónjour'), isFalse);
+    });
   });
 }
 

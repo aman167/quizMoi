@@ -104,6 +104,59 @@ void main() {
     expect(provider.questionsCompletedToday, 0);
   });
 
+  test(
+    'builds a review recommendation from an incorrect weak concept',
+    () async {
+      final now = DateTime(2026, 8, 17, 15);
+      final quiz = QuizDefinition(
+        id: 'quiz-1',
+        title: 'French transport',
+        createdAt: now,
+        updatedAt: now,
+        questions: [
+          QuestionDefinition(
+            id: 'question-1',
+            prompt: 'Comment voyage Marie ?',
+            type: QuestionType.multipleChoice,
+            options: const [
+              AnswerOption(id: 'a', text: 'En train'),
+              AnswerOption(id: 'b', text: 'En avion'),
+            ],
+            correctAnswer: 'a',
+            concepts: const [
+              Concept(
+                id: 'transport',
+                name: 'Les transports',
+                category: 'vocabulary',
+              ),
+            ],
+          ),
+        ],
+      );
+      final provider = AttemptHistoryProvider(
+        attemptRepository: MemoryAttemptRepository(
+          initialAttempts: [
+            _attempt(
+              id: 'incorrect-attempt',
+              status: AttemptStatus.completed,
+              completedAt: now,
+              answers: const {'question-1': 'b'},
+            ),
+          ],
+        ),
+        quizRepository: MemoryQuizRepository(initialQuizzes: [quiz]),
+        now: () => now,
+      );
+
+      await provider.load();
+
+      expect(provider.dailyReviewQueue, hasLength(1));
+      expect(provider.dailyReviewQueue.single.quizId, 'quiz-1');
+      expect(provider.dailyReviewQueue.single.mastery.accuracy, 0);
+    expect(provider.dailyReviewQueue.single.reason, contains('was incorrect'));
+    },
+  );
+
   testWidgets('shows a completed attempt and its score', (tester) async {
     final now = DateTime(2026, 8, 17, 15);
     final provider = AttemptHistoryProvider(
