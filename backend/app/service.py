@@ -3,6 +3,7 @@ import base64
 import os
 import random
 import re
+from functools import lru_cache
 from typing import Protocol
 
 from openai import (
@@ -12,11 +13,13 @@ from openai import (
     OpenAI,
     RateLimitError,
 )
+from pydantic import BaseModel, Field, create_model
 
 from .schemas import (
     GenerateImageQuizRequest,
     GeneratePdfQuizRequest,
     GenerateQuizRequest,
+    GeneratedQuestion,
     GeneratedQuizPayload,
 )
 
@@ -199,6 +202,19 @@ def _settings_text(request: GenerateQuizRequest | GeneratePdfQuizRequest) -> str
     )
 
 
+@lru_cache(maxsize=15)
+def quiz_response_format(question_count: int) -> type[BaseModel]:
+    """Create a strict response schema whose array length matches this request."""
+    return create_model(
+        f"GeneratedQuizPayload{question_count}",
+        __base__=GeneratedQuizPayload,
+        questions=(
+            list[GeneratedQuestion],
+            Field(min_length=question_count, max_length=question_count),
+        ),
+    )
+
+
 class OpenAIQuizGenerator:
     def __init__(self, *, model: str | None = None, api_key: str | None = None):
         self.model = model or os.getenv("OPENAI_MODEL", "gpt-5.6-luna")
@@ -274,12 +290,15 @@ class OpenAIQuizGenerator:
             model=self.model,
             reasoning={"effort": "low"},
             store=False,
-            instructions=self._instructions(request.question_types),
+            instructions=self._instructions(
+                request.question_types,
+                request.question_count,
+            ),
             input=(
                 f"{_settings_text(request)}\n\n"
                 f"SOURCE START\n{selected_source}\nSOURCE END"
             ),
-            text_format=GeneratedQuizPayload,
+            text_format=quiz_response_format(request.question_count),
         )
         return self._parsed(response, "source text")
 
@@ -324,7 +343,10 @@ class OpenAIQuizGenerator:
             model=self.model,
             reasoning={"effort": "low"},
             store=False,
-            instructions=self._instructions(request.question_types),
+            instructions=self._instructions(
+                request.question_types,
+                request.question_count,
+            ),
             input=[
                 {
                     "role": "user",
@@ -334,15 +356,16 @@ class OpenAIQuizGenerator:
                     ],
                 }
             ],
-            text_format=GeneratedQuizPayload,
+            text_format=quiz_response_format(request.question_count),
         )
         return self._parsed(response, label)
 
     @staticmethod
-    def _instructions(question_types: list[str]) -> str:
+    def _instructions(question_types: list[str], question_count: int) -> str:
         return (
             "You create trustworthy French active-recall quizzes. Use only facts and "
-            "language visible in the learner's study material. "
+            "language visible in the learner's study material. Return exactly "
+            f"{question_count} complete, distinct questions; never return fewer. "
             + _question_instructions(question_types)
             + " Every question needs a concise teaching explanation, one short verbatim "
             "source excerpt, and one to three useful French-learning concepts. Do not "
@@ -357,4 +380,6 @@ class OpenAIQuizGenerator:
                 f"OpenAI returned no usable structured quiz from the {label}. The request "
                 "may have been refused or incomplete."
             )
-        return parsed
+        return GeneratedQuizPayload.model_validate(
+            parsed.model_dump(mode="python", by_alias=True)
+        )

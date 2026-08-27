@@ -70,7 +70,7 @@ This log records issues found during emulator and self-use testing. Entries stay
 
 ## QM-005 — Generated correct answers are all in option A
 
-- **Status:** Ready to verify
+- **Status:** Closed 2026-08-27
 - **Priority:** High
 - **Found:** 2026-08-27, real Phase 4 web-article/OpenAI emulator test
 - **Target:** Phase 4 quiz-quality follow-up, before routine self-use
@@ -79,5 +79,6 @@ This log records issues found during emulator and self-use testing. Entries stay
 - **Expected:** Correct-answer positions should be distributed unpredictably so a learner cannot score well by repeatedly choosing the same position. Reordering must preserve each option's stable ID and the correct-answer mapping.
 - **Likely area:** The structured generation contract labels the correct answer and options, but the generation prompt and client save path do not currently require or perform answer-position randomization.
 - **Implemented:** FastAPI deterministically shuffles each generated MCQ's option order using the request ID and question index. Stable option IDs and `correctOptionId` remain unchanged.
-- **Remaining verification:** Generate a real ten-question MCQ set on Android and confirm correct answers are not concentrated in one visible position.
+- **Verification:** A real ten-question Android generation confirmed that correct answers were not concentrated in one visible position.
+- **Manual evidence:** The camera/OpenAI Android acceptance quiz generated and persisted ten MCQs. Their visible correct-option positions were `[B, D, D, D, B, B, B, B, D, D]`, confirming that the answers were no longer all in option A while stable IDs and scoring remained valid.
 - **Acceptance:** Generated MCQ sets randomize option order safely, preserve answer/explanation correctness, avoid obvious position bias across a reviewed evaluation set, and pass unit plus emulator tests.

@@ -611,6 +611,27 @@ void main() {
     expect(find.text('Review area: vocabulary'), findsOneWidget);
   });
 
+  testWidgets('Skipped questions never produce perfect-score feedback', (
+    WidgetTester tester,
+  ) async {
+    final provider = QuizProvider()..startQuiz('test');
+    while (provider.currentQuestionIndex < 9) {
+      provider.skipQuestion();
+    }
+    provider.completeQuiz();
+
+    await tester.pumpWidget(_testApp(provider, const ResultsFeedbackScreen()));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Perfect score! You got every question right. Excellent work!'),
+      findsNothing,
+    );
+    expect(find.text('WRONG / SKIPPED'), findsOneWidget);
+    expect(find.text('10'), findsAtLeastNWidgets(1));
+    expect(find.text('No Answer:'), findsAtLeastNWidgets(1));
+  });
+
   testWidgets('Main screens support narrow phones with enlarged text', (
     WidgetTester tester,
   ) async {

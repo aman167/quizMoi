@@ -47,8 +47,8 @@ class AiTutorCard extends StatelessWidget {
                   shape: BoxShape.circle,
                   color: AppColors.errorContainer,
                 ),
-                child: const Icon(
-                  Icons.close,
+                child: Icon(
+                  question.isAnswered ? Icons.close : Icons.skip_next,
                   size: 16,
                   color: AppColors.error,
                 ),
@@ -89,9 +89,9 @@ class AiTutorCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Your Answer:',
-                      style: TextStyle(
+                    Text(
+                      question.isAnswered ? 'Your Answer:' : 'No Answer:',
+                      style: const TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
                         color: AppColors.error,
@@ -100,10 +100,12 @@ class AiTutorCard extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       userAnswerText,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14,
                         color: AppColors.error,
-                        decoration: TextDecoration.lineThrough,
+                        decoration: question.isAnswered
+                            ? TextDecoration.lineThrough
+                            : TextDecoration.none,
                       ),
                     ),
                   ],

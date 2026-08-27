@@ -8,7 +8,7 @@ Last restructured: 2026-08-17
 - [x] Phase 1 — Stabilize the prototype and define behavior (completed 2026-08-17)
 - [x] Phase 2 — Build the real local learning core (completed 2026-08-17)
 - [x] Phase 3 — Complete the AI learning prototype (completed 2026-08-17)
-- [ ] Phase 4 — Complete the Version 1 feature breadth (implementation complete; Android acceptance pending)
+- [x] Phase 4 — Complete the Version 1 feature breadth (completed 2026-08-27)
 - [ ] Phase 5 — Self-use alpha
 - [ ] Phase 6 — Hosted private beta
 - [ ] Phase 7 — Reliability and polish
@@ -22,7 +22,7 @@ Phase 2 completion evidence: SQLite-backed repositories persist knowledge bases,
 
 Phase 3 completion evidence: a real Android-emulator test sent pasted French text through the local FastAPI backend and OpenAI, returned ten structured multiple-choice questions, saved the generated source and quiz, completed and scored the attempt, and reflected the result on the dashboard. Automated backend, Flutter, persistence, restart, analyzer, and debug-APK checks pass. UX and metric findings discovered during self-use remain tracked in `DEFECT_LOG.md` and do not invalidate the working source-to-feedback integration.
 
-Phase 4 implementation evidence: camera image input, typed answers, session controls, interactive generation settings, option randomization, personalized review, long-source handling, duplicate/deletion controls, and opt-in notification permission are implemented. The analyzer is clean, 77 Flutter tests and 18 backend tests pass, the backend compiles, secret scanning is clean, and a debug APK builds. Final Phase 4 completion still requires the owner's Android acceptance pass with one real camera/OpenAI request and verification of `QM-005`.
+Phase 4 completion evidence: the installed Android APK requested camera permission on demand, captured/retook/previewed an emulator photograph, sent the confirmed image through FastAPI and OpenAI vision, generated exactly ten structured questions, saved and completed the quiz, updated dashboard accuracy/daily activity/recommendations, and restored everything after a force-stop and reinstall. The persisted quiz contained ten questions and correct answers in multiple visible positions, closing `QM-005`. Acceptance also found and fixed exact-question-count enforcement and misleading skipped-question feedback. The analyzer is clean, 79 Flutter tests and 19 backend tests pass, backend compilation and secret scanning are clean, and a debug APK builds.
 
 ## Build-first method
 
@@ -184,6 +184,6 @@ Exit criteria: text, PDF, camera image, and supported URL sources work; MCQ and 
 
 ## Immediate backlog
 
-1. Run the Phase 4 Android acceptance pass, including one real camera-image/OpenAI journey and answer-position verification.
-2. Resolve or explicitly defer the remaining logged self-use defects before Phase 5 metrics are trusted.
-3. Begin Phase 5 daily self-use on the emulator and the owner's physical Android phone.
+1. Resolve or explicitly defer the remaining logged self-use defects before Phase 5 metrics are trusted.
+2. Begin Phase 5 daily self-use on the emulator and the owner's physical Android phone.
+3. Record crashes, data loss, confusing feedback, and low-quality generated questions during normal use.

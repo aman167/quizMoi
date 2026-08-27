@@ -84,8 +84,8 @@ class Quiz {
 
   int get correctCount => questions.where((q) => q.isCorrect).length;
 
-  int get incorrectCount =>
-      questions.where((q) => q.isAnswered && !q.isCorrect).length;
+  /// Questions that did not earn credit, including skipped questions.
+  int get incorrectCount => questions.where((q) => !q.isCorrect).length;
 
   int get unansweredCount => totalQuestions - answeredCount;
 
@@ -93,5 +93,5 @@ class Quiz {
       totalQuestions == 0 ? 0 : (correctCount / totalQuestions) * 100;
 
   List<QuizQuestion> get incorrectQuestions =>
-      questions.where((q) => q.isAnswered && !q.isCorrect).toList();
+      questions.where((q) => !q.isCorrect).toList();
 }

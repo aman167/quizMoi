@@ -153,7 +153,10 @@ void main() {
       expect(provider.dailyReviewQueue, hasLength(1));
       expect(provider.dailyReviewQueue.single.quizId, 'quiz-1');
       expect(provider.dailyReviewQueue.single.mastery.accuracy, 0);
-    expect(provider.dailyReviewQueue.single.reason, contains('was incorrect'));
+      expect(
+        provider.dailyReviewQueue.single.reason,
+        contains('was incorrect'),
+      );
     },
   );
 

@@ -15,7 +15,11 @@ from app.schemas import (
     GenerateQuizRequest,
     GeneratedQuizPayload,
 )
-from app.service import InvalidGenerationError, validate_generated_quiz
+from app.service import (
+    InvalidGenerationError,
+    quiz_response_format,
+    validate_generated_quiz,
+)
 from app.web_article import WebArticleContent, WebArticleError
 
 
@@ -332,6 +336,18 @@ def test_grounding_rejects_an_excerpt_not_in_the_source() -> None:
         assert "source excerpt" in str(error)
     else:
         raise AssertionError("Ungrounded output should be rejected.")
+
+
+def test_response_schema_requires_the_requested_question_count() -> None:
+    ten_question_format = quiz_response_format(10)
+
+    with pytest.raises(ValueError):
+        ten_question_format.model_validate(_payload(1).model_dump(by_alias=True))
+
+    parsed = ten_question_format.model_validate(
+        _payload(10).model_dump(by_alias=True)
+    )
+    assert len(parsed.questions) == 10
 
 
 def test_repeated_text_request_id_reuses_the_completed_result() -> None:

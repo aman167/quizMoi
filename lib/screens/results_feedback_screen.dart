@@ -428,7 +428,7 @@ class ResultsFeedbackScreen extends StatelessWidget {
                             child: _buildResultStatTile(
                               icon: Icons.cancel,
                               iconColor: AppColors.error,
-                              label: 'INCORRECT',
+                              label: 'WRONG / SKIPPED',
                               value: '$incorrectCount',
                               bgColor: AppColors.errorContainer.withValues(
                                 alpha: 0.4,
