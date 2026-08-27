@@ -2,17 +2,18 @@
 
 This FastAPI service keeps the OpenAI key outside the Android application and validates generated quiz data before Flutter receives it.
 
-It exposes two quiz-generation routes and one no-cost source-preview route:
+It exposes three quiz-generation routes and one no-cost source-preview route:
 
 - `POST /v1/quizzes/generate` accepts pasted source text as JSON.
 - `POST /v1/quizzes/generate-pdf` accepts a PDF and generation settings as multipart form data.
+- `POST /v1/quizzes/generate-image` accepts a confirmed JPEG, PNG, or WebP image as multipart form data.
 - `POST /v1/sources/web/preview` retrieves and cleans one public web article without contacting OpenAI.
 
-The PDF route validates a maximum 10 MB file and the PDF signature, then sends the document directly to the OpenAI Responses API as an `input_file` with low-detail page images. The request uses structured output and `store=false`; quizMoi stores only source metadata and generated learning data locally, not the PDF bytes. A scanned or protected PDF can still fail if the model cannot read enough useful content, and that failure is returned without losing the learner's selected source.
+The PDF route validates a maximum 10 MB file and its signature, then sends the document to the OpenAI Responses API as an `input_file`. The image route applies the same size boundary, verifies JPEG/PNG/WebP content, and sends high-detail image input. Both use structured output and `store=false`; quizMoi stores source metadata and generated learning data locally rather than source bytes.
 
 Both generation routes require a client-created `requestId`. If a mobile connection drops after FastAPI accepted the request, Flutter retries with the same ID. The backend reuses the in-progress operation or completed quiz instead of sending a second paid provider request. Completed results remain in memory for one hour, with at most 64 retained operations; restarting the backend clears this prototype recovery cache. The cache retains the generated quiz and an input fingerprint, not the original source text or PDF bytes.
 
-The web-preview route accepts only public standard-port HTTP/HTTPS destinations, validates each redirect, rejects private/local addresses and unsupported content, limits the downloaded response to 2 MB, strips common non-article HTML, and returns at most 12,000 cleaned characters. Common paywall or sign-in responses receive a stable error category. The backend does not log article text, and OpenAI is not called until Flutter sends the learner-confirmed cleaned text through the normal generation route.
+The web-preview route accepts only public standard-port HTTP/HTTPS destinations, validates each redirect, rejects private/local addresses and unsupported content, limits the downloaded response to 2 MB, strips common non-article HTML, and returns at most 60,000 cleaned characters. Common paywall or sign-in responses receive a stable error category. The backend does not log article text, and OpenAI is not called until Flutter sends the learner-confirmed cleaned text through the normal generation route.
 
 ## Windows setup
 

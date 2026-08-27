@@ -26,6 +26,7 @@ class QuizGenerationProvider extends ChangeNotifier {
   QuizGenerationState _state = QuizGenerationState.idle;
   QuizGenerationRequest? _request;
   PdfQuizGenerationRequest? _pdfRequest;
+  ImageQuizGenerationRequest? _imageRequest;
   WebArticleSourcePreview? _webArticlePreview;
   QuizDefinition? _draftQuiz;
   SourceDocument? _sourceDocument;
@@ -37,6 +38,7 @@ class QuizGenerationProvider extends ChangeNotifier {
   QuizGenerationState get state => _state;
   QuizGenerationRequest? get request => _request;
   PdfQuizGenerationRequest? get pdfRequest => _pdfRequest;
+  ImageQuizGenerationRequest? get imageRequest => _imageRequest;
   WebArticleSourcePreview? get webArticlePreview => _webArticlePreview;
   QuizDefinition? get draftQuiz => _draftQuiz;
   SourceDocument? get sourceDocument => _sourceDocument;
@@ -46,7 +48,7 @@ class QuizGenerationProvider extends ChangeNotifier {
   bool get isFetchingSource => _state == QuizGenerationState.fetchingSource;
   bool get isBusy => isGenerating || isFetchingSource;
   bool get canRetry =>
-      (_request != null || _pdfRequest != null) &&
+      (_request != null || _pdfRequest != null || _imageRequest != null) &&
       _state == QuizGenerationState.failure;
 
   bool prepareSource({
@@ -54,6 +56,10 @@ class QuizGenerationProvider extends ChangeNotifier {
     required String cefrLevel,
     String sourceTitle = 'Pasted French study text',
     SourceType sourceType = SourceType.pastedText,
+    String difficulty = 'medium',
+    int questionCount = 10,
+    List<QuestionType> questionTypes = const [QuestionType.multipleChoice],
+    int? timeLimitMinutes,
   }) {
     _state = QuizGenerationState.validating;
     _clearError();
@@ -67,10 +73,10 @@ class QuizGenerationProvider extends ChangeNotifier {
       );
       return false;
     }
-    if (trimmed.length > 12000) {
+    if (trimmed.length > 60000) {
       _fail(
         'invalid_source',
-        'This prototype accepts up to 12,000 characters. Shorten the text, then retry.',
+        'This prototype accepts up to 60,000 characters. Shorten the text, then retry.',
       );
       return false;
     }
@@ -82,8 +88,13 @@ class QuizGenerationProvider extends ChangeNotifier {
           : sourceTitle.trim(),
       sourceText: trimmed,
       cefrLevel: cefrLevel,
+      difficulty: difficulty,
+      questionCount: questionCount,
+      questionTypes: questionTypes,
+      timeLimitMinutes: timeLimitMinutes,
     );
     _pdfRequest = null;
+    _imageRequest = null;
     _webArticlePreview = null;
     _sourceType = sourceType;
     _state = QuizGenerationState.previewing;
@@ -96,6 +107,10 @@ class QuizGenerationProvider extends ChangeNotifier {
     required String fileName,
     required Uint8List pdfBytes,
     required String cefrLevel,
+    String difficulty = 'medium',
+    int questionCount = 10,
+    List<QuestionType> questionTypes = const [QuestionType.multipleChoice],
+    int? timeLimitMinutes,
   }) {
     _state = QuizGenerationState.validating;
     _clearError();
@@ -121,10 +136,64 @@ class QuizGenerationProvider extends ChangeNotifier {
       fileName: fileName,
       pdfBytes: pdfBytes,
       cefrLevel: cefrLevel,
+      difficulty: difficulty,
+      questionCount: questionCount,
+      questionTypes: questionTypes,
+      timeLimitMinutes: timeLimitMinutes,
     );
     _request = null;
+    _imageRequest = null;
     _webArticlePreview = null;
     _sourceType = SourceType.pdf;
+    _state = QuizGenerationState.previewing;
+    notifyListeners();
+    return true;
+  }
+
+  bool prepareImage({
+    required String sourceTitle,
+    required String fileName,
+    required String mimeType,
+    required Uint8List imageBytes,
+    required String cefrLevel,
+    String difficulty = 'medium',
+    int questionCount = 10,
+    List<QuestionType> questionTypes = const [QuestionType.multipleChoice],
+    int? timeLimitMinutes,
+  }) {
+    _state = QuizGenerationState.validating;
+    _clearError();
+    notifyListeners();
+    if (imageBytes.isEmpty ||
+        !const {'image/jpeg', 'image/png', 'image/webp'}.contains(mimeType)) {
+      _fail(
+        'invalid_source',
+        'Capture a readable JPEG, PNG, or WebP image first.',
+      );
+      return false;
+    }
+    if (imageBytes.length > 10 * 1024 * 1024) {
+      _fail('invalid_source', 'This prototype accepts images up to 10 MB.');
+      return false;
+    }
+    _imageRequest = ImageQuizGenerationRequest(
+      requestId: _newId('generation'),
+      sourceTitle: sourceTitle.trim().isEmpty
+          ? 'Camera study image'
+          : sourceTitle.trim(),
+      fileName: fileName,
+      mimeType: mimeType,
+      imageBytes: imageBytes,
+      cefrLevel: cefrLevel,
+      difficulty: difficulty,
+      questionCount: questionCount,
+      questionTypes: questionTypes,
+      timeLimitMinutes: timeLimitMinutes,
+    );
+    _request = null;
+    _pdfRequest = null;
+    _webArticlePreview = null;
+    _sourceType = SourceType.image;
     _state = QuizGenerationState.previewing;
     notifyListeners();
     return true;
@@ -133,6 +202,10 @@ class QuizGenerationProvider extends ChangeNotifier {
   Future<bool> prepareWebArticle({
     required String url,
     required String cefrLevel,
+    String difficulty = 'medium',
+    int questionCount = 10,
+    List<QuestionType> questionTypes = const [QuestionType.multipleChoice],
+    int? timeLimitMinutes,
   }) async {
     _state = QuizGenerationState.validating;
     _clearError();
@@ -160,8 +233,13 @@ class QuizGenerationProvider extends ChangeNotifier {
         sourceTitle: preview.title,
         sourceText: preview.text,
         cefrLevel: cefrLevel,
+        difficulty: difficulty,
+        questionCount: questionCount,
+        questionTypes: questionTypes,
+        timeLimitMinutes: timeLimitMinutes,
       );
       _pdfRequest = null;
+      _imageRequest = null;
       _sourceType = SourceType.webArticle;
       _state = QuizGenerationState.previewing;
       notifyListeners();
@@ -181,7 +259,10 @@ class QuizGenerationProvider extends ChangeNotifier {
   Future<bool> generate() async {
     final generationRequest = _request;
     final pdfGenerationRequest = _pdfRequest;
-    if (generationRequest == null && pdfGenerationRequest == null) {
+    final imageGenerationRequest = _imageRequest;
+    if (generationRequest == null &&
+        pdfGenerationRequest == null &&
+        imageGenerationRequest == null) {
       _fail('invalid_source', 'Add and preview study material first.');
       return false;
     }
@@ -189,16 +270,25 @@ class QuizGenerationProvider extends ChangeNotifier {
     _clearError();
     notifyListeners();
     try {
-      final generated = pdfGenerationRequest == null
-          ? await gateway.generate(generationRequest!)
-          : await gateway.generatePdf(pdfGenerationRequest);
+      final GeneratedQuizDraft generated;
+      if (pdfGenerationRequest != null) {
+        generated = await gateway.generatePdf(pdfGenerationRequest);
+      } else if (imageGenerationRequest != null) {
+        generated = await gateway.generateImage(imageGenerationRequest);
+      } else {
+        generated = await gateway.generate(generationRequest!);
+      }
       final now = _now();
       final sourceId = _newId('source');
       final sourceTitle =
-          generationRequest?.sourceTitle ?? pdfGenerationRequest!.sourceTitle;
+          generationRequest?.sourceTitle ??
+          pdfGenerationRequest?.sourceTitle ??
+          imageGenerationRequest!.sourceTitle;
       final sourceContent =
           generationRequest?.sourceText ??
-          'PDF source: ${pdfGenerationRequest!.fileName}';
+          (pdfGenerationRequest != null
+              ? 'PDF source: ${pdfGenerationRequest.fileName}'
+              : 'Camera image: ${imageGenerationRequest!.fileName}');
       _sourceDocument = SourceDocument(
         id: sourceId,
         title: sourceTitle,
@@ -211,27 +301,15 @@ class QuizGenerationProvider extends ChangeNotifier {
         id: _newId('quiz'),
         sourceDocumentId: sourceId,
         title: generated.title,
-        questions: generated.questions.indexed.map((entry) {
-          final question = entry.$2;
-          return QuestionDefinition(
-            id: _newId('question'),
-            prompt: question.prompt,
-            type: QuestionType.multipleChoice,
-            options: question.options,
-            correctAnswer: question.correctOptionId,
-            explanation: question.explanation,
-            concepts: question.concepts.indexed.map((conceptEntry) {
-              final concept = conceptEntry.$2;
-              return Concept(
-                id: _newId('concept'),
-                name: concept.name,
-                category: concept.category,
-              );
-            }).toList(),
-          );
-        }).toList(),
+        questions: generated.questions
+            .map((question) => _toQuestionDefinition(question))
+            .toList(),
         createdAt: now,
         updatedAt: now,
+        timeLimitMinutes:
+            generationRequest?.timeLimitMinutes ??
+            pdfGenerationRequest?.timeLimitMinutes ??
+            imageGenerationRequest?.timeLimitMinutes,
       );
       _state = QuizGenerationState.reviewing;
       notifyListeners();
@@ -246,6 +324,97 @@ class QuizGenerationProvider extends ChangeNotifier {
       );
       return false;
     }
+  }
+
+  Future<bool> regenerateQuestion(int index) async {
+    final draft = _draftQuiz;
+    if (draft == null || index < 0 || index >= draft.questions.length) {
+      return false;
+    }
+    _state = QuizGenerationState.generating;
+    _clearError();
+    notifyListeners();
+    try {
+      final requestId = _newId('generation');
+      final GeneratedQuizDraft generated;
+      if (_pdfRequest != null) {
+        final source = _pdfRequest!;
+        generated = await gateway.generatePdf(
+          PdfQuizGenerationRequest(
+            requestId: requestId,
+            sourceTitle: source.sourceTitle,
+            fileName: source.fileName,
+            pdfBytes: source.pdfBytes,
+            cefrLevel: source.cefrLevel,
+            difficulty: source.difficulty,
+            questionCount: 1,
+            questionTypes: [draft.questions[index].type],
+            timeLimitMinutes: source.timeLimitMinutes,
+          ),
+        );
+      } else if (_imageRequest != null) {
+        final source = _imageRequest!;
+        generated = await gateway.generateImage(
+          ImageQuizGenerationRequest(
+            requestId: requestId,
+            sourceTitle: source.sourceTitle,
+            fileName: source.fileName,
+            mimeType: source.mimeType,
+            imageBytes: source.imageBytes,
+            cefrLevel: source.cefrLevel,
+            difficulty: source.difficulty,
+            questionCount: 1,
+            questionTypes: [draft.questions[index].type],
+            timeLimitMinutes: source.timeLimitMinutes,
+          ),
+        );
+      } else {
+        generated = await gateway.generate(
+          _request!.copyWith(
+            requestId: requestId,
+            questionCount: 1,
+            questionTypes: [draft.questions[index].type],
+          ),
+        );
+      }
+      final questions = draft.questions.toList();
+      questions[index] = _toQuestionDefinition(
+        generated.questions.single,
+        id: questions[index].id,
+      );
+      _draftQuiz = draft.copyWith(questions: questions, updatedAt: _now());
+      _state = QuizGenerationState.reviewing;
+      notifyListeners();
+      return true;
+    } on QuizGenerationException catch (error) {
+      _fail(error.code, error.message);
+      return false;
+    } catch (_) {
+      _fail('generation_failed', 'This question could not be regenerated.');
+      return false;
+    }
+  }
+
+  QuestionDefinition _toQuestionDefinition(
+    GeneratedQuestionDraft question, {
+    String? id,
+  }) {
+    return QuestionDefinition(
+      id: id ?? _newId('question'),
+      prompt: question.prompt,
+      type: question.type,
+      options: question.options,
+      correctAnswer: question.correctAnswer,
+      acceptedAnswers: question.acceptedAnswers,
+      explanation: question.explanation,
+      concepts: question.concepts.map((concept) {
+        return Concept(
+          id: _newId('concept'),
+          name: concept.name,
+          category: concept.category,
+        );
+      }).toList(),
+    );
   }
 
   void markSaving() {
@@ -263,6 +432,7 @@ class QuizGenerationProvider extends ChangeNotifier {
     _state = QuizGenerationState.idle;
     _request = null;
     _pdfRequest = null;
+    _imageRequest = null;
     _webArticlePreview = null;
     _draftQuiz = null;
     _sourceDocument = null;

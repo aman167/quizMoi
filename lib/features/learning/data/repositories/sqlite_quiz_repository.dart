@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:sqflite/sqflite.dart';
 
 import '../../domain/entities/learning_entities.dart';
@@ -46,6 +48,7 @@ class SqliteQuizRepository implements QuizRepository {
         'id': quiz.id,
         'knowledge_base_id': quiz.knowledgeBaseId,
         'source_document_id': quiz.sourceDocumentId,
+        'time_limit_minutes': quiz.timeLimitMinutes,
         'title': quiz.title,
         'is_archived': quiz.isArchived ? 1 : 0,
         'created_at': quiz.createdAt.toIso8601String(),
@@ -77,6 +80,7 @@ class SqliteQuizRepository implements QuizRepository {
           'position': questionIndex,
           'prompt': question.prompt,
           'question_type': question.type.name,
+          'accepted_answers': jsonEncode(question.acceptedAnswers),
           'correct_answer': question.correctAnswer,
         });
 
@@ -133,6 +137,7 @@ class SqliteQuizRepository implements QuizRepository {
       isArchived: (row['is_archived']! as int) == 1,
       createdAt: DateTime.parse(row['created_at']! as String),
       updatedAt: DateTime.parse(row['updated_at']! as String),
+      timeLimitMinutes: row['time_limit_minutes'] as int?,
     );
   }
 
@@ -173,6 +178,7 @@ class SqliteQuizRepository implements QuizRepository {
           )
           .toList(),
       correctAnswer: row['correct_answer']! as String,
+      acceptedAnswers: _decodeAcceptedAnswers(row['accepted_answers']),
       explanation: explanationRow == null
           ? null
           : QuestionExplanation(
@@ -189,5 +195,11 @@ class SqliteQuizRepository implements QuizRepository {
           )
           .toList(),
     );
+  }
+
+  List<String> _decodeAcceptedAnswers(Object? value) {
+    if (value is! String || value.isEmpty) return const [];
+    final decoded = jsonDecode(value);
+    return decoded is List<Object?> ? decoded.cast<String>() : const [];
   }
 }

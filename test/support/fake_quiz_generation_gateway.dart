@@ -55,6 +55,15 @@ class FakeQuizGenerationGateway implements QuizGenerationGateway {
     if (error != null) throw error!;
     return result ?? generatedDraft(questionCount: request.questionCount);
   }
+
+  @override
+  Future<GeneratedQuizDraft> generateImage(
+    ImageQuizGenerationRequest request,
+  ) async {
+    callCount++;
+    if (error != null) throw error!;
+    return result ?? generatedDraft(questionCount: request.questionCount);
+  }
 }
 
 GeneratedQuizDraft generatedDraft({int questionCount = 10}) {
@@ -72,7 +81,7 @@ GeneratedQuizDraft generatedDraft({int questionCount = 10}) {
           AnswerOption(id: 'c', text: 'À vélo'),
           AnswerOption(id: 'd', text: 'À pied'),
         ],
-        correctOptionId: 'a',
+        correctAnswer: 'a',
         explanation: const QuestionExplanation(
           text: 'Le texte dit que Marie prend le train.',
           sourceExcerpt: 'Marie prend le train chaque matin',

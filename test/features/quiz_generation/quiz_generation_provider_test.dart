@@ -165,4 +165,11 @@ class _FailOnceGateway implements QuizGenerationGateway {
   ) async {
     throw UnimplementedError();
   }
+
+  @override
+  Future<GeneratedQuizDraft> generateImage(
+    ImageQuizGenerationRequest request,
+  ) async {
+    throw UnimplementedError();
+  }
 }

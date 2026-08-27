@@ -76,5 +76,19 @@ void main() {
       expect(provider.currentQuestionIndex, 0);
       expect(provider.quizCompleted, isFalse);
     });
+
+    test('counts skipped questions as not earning credit', () {
+      final provider = QuizProvider()..startQuiz('test');
+
+      while (provider.currentQuestionIndex < 9) {
+        provider.skipQuestion();
+      }
+      provider.completeQuiz();
+
+      expect(provider.currentQuiz!.correctCount, 0);
+      expect(provider.currentQuiz!.incorrectCount, 10);
+      expect(provider.currentQuiz!.unansweredCount, 10);
+      expect(provider.currentQuiz!.incorrectQuestions, hasLength(10));
+    });
   });
 }

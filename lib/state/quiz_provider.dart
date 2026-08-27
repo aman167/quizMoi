@@ -36,6 +36,12 @@ class QuizProvider extends ChangeNotifier {
   int get elapsedSeconds => _elapsedSeconds;
   bool get quizCompleted => _quizCompleted;
   bool get canAdvance => currentQuestion?.isAnswered ?? false;
+  int? get timeLimitSeconds => _savedQuizDefinition?.timeLimitMinutes == null
+      ? null
+      : _savedQuizDefinition!.timeLimitMinutes! * 60;
+  int? get remainingSeconds => timeLimitSeconds == null
+      ? null
+      : (timeLimitSeconds! - _elapsedSeconds).clamp(0, timeLimitSeconds!);
   bool get hasResumableSession =>
       _savedQuizDefinition != null &&
       _activeAttemptId != null &&
@@ -227,6 +233,7 @@ class QuizProvider extends ChangeNotifier {
               .map((option) => QuizOption(id: option.id, text: option.text))
               .toList(),
           correctOptionId: question.correctAnswer,
+          acceptedAnswers: question.acceptedAnswers,
           type: question.type.name,
         );
       }).toList(),
@@ -248,6 +255,8 @@ class QuizProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void enterTypedAnswer(String value) => selectOption(value);
+
   bool nextQuestion() {
     if (_currentQuiz == null || !canAdvance || _quizCompleted) return false;
     if (_currentQuestionIndex < _currentQuiz!.questions.length - 1) {
@@ -259,6 +268,40 @@ class QuizProvider extends ChangeNotifier {
     notifyListeners();
     return true;
   }
+
+  bool skipQuestion() {
+    if (_currentQuiz == null || _quizCompleted) return false;
+    if (_currentQuestionIndex >= _currentQuiz!.questions.length - 1) {
+      return false;
+    }
+    _currentQuestionIndex++;
+    unawaited(persistSession().catchError((_) {}));
+    notifyListeners();
+    return true;
+  }
+
+  void goToQuestion(int index) {
+    final quiz = _currentQuiz;
+    if (quiz == null ||
+        _quizCompleted ||
+        index < 0 ||
+        index >= quiz.questions.length) {
+      return;
+    }
+    _currentQuestionIndex = index;
+    unawaited(persistSession().catchError((_) {}));
+    notifyListeners();
+  }
+
+  bool completeQuiz() {
+    if (_currentQuiz == null || _quizCompleted) return false;
+    _quizCompleted = true;
+    unawaited(persistSession().catchError((_) {}));
+    notifyListeners();
+    return true;
+  }
+
+  Future<void> pauseQuiz() => persistSession();
 
   void previousQuestion() {
     if (_currentQuiz == null) return;
@@ -404,9 +447,16 @@ class QuizProvider extends ChangeNotifier {
     _completionReported = false;
   }
 
-  void incrementTimer() {
-    if (_currentQuiz == null || _quizCompleted) return;
+  bool incrementTimer() {
+    if (_currentQuiz == null || _quizCompleted) return false;
     _elapsedSeconds++;
+    final expired =
+        timeLimitSeconds != null && _elapsedSeconds >= timeLimitSeconds!;
+    if (expired) {
+      _quizCompleted = true;
+      unawaited(persistSession().catchError((_) {}));
+    }
     notifyListeners();
+    return expired;
   }
 }

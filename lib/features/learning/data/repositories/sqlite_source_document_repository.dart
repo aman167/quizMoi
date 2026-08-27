@@ -39,6 +39,17 @@ class SqliteSourceDocumentRepository implements SourceDocumentRepository {
   }
 
   @override
+  Future<SourceDocument?> findDuplicate(SourceDocument source) async {
+    final sources = await getAll();
+    for (final candidate in sources) {
+      if (candidate.id != source.id && _sameSource(candidate, source)) {
+        return candidate;
+      }
+    }
+    return null;
+  }
+
+  @override
   Future<void> save(SourceDocument source) async {
     await database.connection.insert('source_documents', {
       'id': source.id,
@@ -58,4 +69,15 @@ class SqliteSourceDocumentRepository implements SourceDocumentRepository {
     content: row['content']! as String,
     createdAt: DateTime.parse(row['created_at']! as String),
   );
+}
+
+bool _sameSource(SourceDocument left, SourceDocument right) {
+  if (left.type != right.type) return false;
+  if (left.sourceUri != null && right.sourceUri != null) {
+    return left.sourceUri!.trim().toLowerCase() ==
+        right.sourceUri!.trim().toLowerCase();
+  }
+  String normalize(String value) =>
+      value.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
+  return normalize(left.content) == normalize(right.content);
 }

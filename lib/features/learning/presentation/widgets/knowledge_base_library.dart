@@ -376,7 +376,7 @@ class _KnowledgeBaseEmpty extends StatelessWidget {
           OutlinedButton.icon(
             onPressed: onCreate,
             icon: const Icon(Icons.add),
-            label: const Text('Create Knowledge Base'),
+            label: const Text('Create folder'),
           ),
         ],
       ),

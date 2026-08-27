@@ -12,6 +12,7 @@ class QuizQuestion {
   final String prompt;
   final List<QuizOption> options;
   final String correctOptionId;
+  final List<String> acceptedAnswers;
 
   /// The kind of question: `'multiple_choice'`, `'fill_blank'`, or
   /// `'translation'`.
@@ -25,15 +26,40 @@ class QuizQuestion {
     required this.prompt,
     required this.options,
     required this.correctOptionId,
+    this.acceptedAnswers = const [],
     this.type = 'multiple_choice',
     this.selectedOptionId,
   });
 
   /// Whether the user's selection matches the correct answer.
-  bool get isCorrect => selectedOptionId == correctOptionId;
+  bool get isTypedAnswer => type == 'typedAnswer';
+
+  bool get isCorrect {
+    final selected = selectedOptionId;
+    if (selected == null) return false;
+    if (!isTypedAnswer) return selected == correctOptionId;
+    final normalized = normalizeTypedAnswer(selected);
+    return <String>[
+      correctOptionId,
+      ...acceptedAnswers,
+    ].map(normalizeTypedAnswer).contains(normalized);
+  }
 
   /// Whether the user has made a selection.
-  bool get isAnswered => selectedOptionId != null;
+  bool get isAnswered => selectedOptionId?.trim().isNotEmpty == true;
+}
+
+/// Version 1 typed scoring is deterministic: case and repeated whitespace are
+/// ignored, trailing sentence punctuation is ignored, French accents remain
+/// significant, accepted alternatives receive full credit, and partial credit
+/// is not awarded.
+String normalizeTypedAnswer(String value) {
+  return value
+      .trim()
+      .toLowerCase()
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .replaceAll(RegExp(r'[.!?;,]+$'), '')
+      .trim();
 }
 
 /// A complete quiz containing an ordered list of [QuizQuestion]s.
@@ -58,8 +84,8 @@ class Quiz {
 
   int get correctCount => questions.where((q) => q.isCorrect).length;
 
-  int get incorrectCount =>
-      questions.where((q) => q.isAnswered && !q.isCorrect).length;
+  /// Questions that did not earn credit, including skipped questions.
+  int get incorrectCount => questions.where((q) => !q.isCorrect).length;
 
   int get unansweredCount => totalQuestions - answeredCount;
 
@@ -67,5 +93,5 @@ class Quiz {
       totalQuestions == 0 ? 0 : (correctCount / totalQuestions) * 100;
 
   List<QuizQuestion> get incorrectQuestions =>
-      questions.where((q) => q.isAnswered && !q.isCorrect).toList();
+      questions.where((q) => !q.isCorrect).toList();
 }

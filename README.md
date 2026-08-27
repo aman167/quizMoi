@@ -9,14 +9,14 @@ The application is currently in private development. It is not published on the 
 The repository currently contains a persistent local learning core with:
 
 - a learner dashboard;
-- pasted-text, Android PDF, and public web-article preview/AI-generation screens;
-- a timed multiple-choice quiz flow;
+- pasted-text, Android PDF, camera-image, and public web-article preview/AI-generation screens;
+- multiple-choice and typed-answer quiz flows with skip, review, pause/resume, and optional limits;
 - scoring with source-grounded explanations and concept feedback;
 - SQLite-backed sources, knowledge bases, quizzes, sessions, attempts, and settings;
 - a Python FastAPI generation backend with a versioned structured contract;
 - Android, iOS, web, and Windows platform scaffolding.
 
-The remaining offline demo quiz is explicitly separate from generated and saved learning data. Phase 4's direct-PDF checkpoint has passed real OpenAI emulator tests through generation, interrupted-response recovery, local save, quiz completion, and app-restart persistence. Public web-article retrieval, sanitization, preview, generation, local save, quiz completion, dashboard history, source-URL persistence, and app-restart restoration have also passed a real OpenAI emulator journey. Generation requests carry a stable recovery ID so an interrupted response can retrieve the retained local-backend operation instead of creating another provider call. Camera-captured study images and typed-answer breadth remain scheduled. Generated-answer position bias found during web acceptance is tracked as `QM-005`. See [DEFECT_LOG.md](DEFECT_LOG.md) and [DEVELOPMENT_ROADMAP.md](DEVELOPMENT_ROADMAP.md).
+The remaining offline demo quiz is explicitly separate from generated and saved learning data. Phase 4's PDF and web-article checkpoints have passed real OpenAI emulator journeys. Camera capture, typed answers, interactive generation settings, source management, personalized review, and opt-in notification permission are implemented for the final Phase 4 Android acceptance pass. Generated-answer position bias has an implemented fix awaiting emulator verification as `QM-005`. See [DEFECT_LOG.md](DEFECT_LOG.md) and [DEVELOPMENT_ROADMAP.md](DEVELOPMENT_ROADMAP.md).
 
 The intended learner experience and current demo boundaries are defined in [PRODUCT_SPEC.md](PRODUCT_SPEC.md).
 Issues found during emulator and self-use testing are tracked in [DEFECT_LOG.md](DEFECT_LOG.md).
@@ -139,9 +139,9 @@ While `flutter run` is active:
 
 ## Run the local quiz-generation backend
 
-The Android app never contains the OpenAI key. It calls a FastAPI service running on this computer, and the backend keeps the key in an environment variable. Pasted or cleaned article text uses `/v1/quizzes/generate`; confirmed PDFs use multipart upload to `/v1/quizzes/generate-pdf`, where the backend includes the PDF directly in an OpenAI Responses API request. Public article URLs first use `/v1/sources/web/preview` so the learner can inspect the backend-cleaned text before any AI request is made.
+The Android app never contains the OpenAI key. It calls a FastAPI service running on this computer, and the backend keeps the key in an environment variable. Text uses `/v1/quizzes/generate`, confirmed PDFs use `/v1/quizzes/generate-pdf`, and confirmed camera images use `/v1/quizzes/generate-image`. Public article URLs first use `/v1/sources/web/preview` so the learner can inspect cleaned text before an AI request.
 
-Web preview accepts public HTTP/HTTPS pages only. The backend rechecks up to three redirects, blocks local/private destinations and nonstandard ports, accepts HTML or plain text up to 2 MB, removes common scripts/navigation/forms, reports common subscription or sign-in pages, and uses at most 12,000 cleaned characters. JavaScript-only, protected, unsupported, or text-poor pages can be rejected safely while the URL remains in the app for correction or retry.
+Web preview accepts public HTTP/HTTPS pages only. The backend rechecks up to three redirects, blocks local/private destinations and nonstandard ports, accepts HTML or plain text up to 2 MB, removes common scripts/navigation/forms, and retains at most 60,000 cleaned characters. Text generation samples the beginning, middle, and ending within a 12,000-character model budget.
 
 Flutter assigns each generation one request ID and preserves it when recovering an interrupted response. FastAPI retains the in-progress or completed result in memory for up to one hour, allowing **Recover Result** to retrieve it without a second OpenAI call. Restarting FastAPI clears this temporary prototype cache.
 

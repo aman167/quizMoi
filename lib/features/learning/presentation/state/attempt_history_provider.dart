@@ -26,6 +26,47 @@ class AttemptHistoryEntry {
       totalQuestions == 0 ? 0 : (correctAnswers / totalQuestions) * 100;
 }
 
+enum MasteryStatus { needsReview, learning, mastered }
+
+@immutable
+class ConceptMastery {
+  final Concept concept;
+  final int correctAnswers;
+  final int attempts;
+  final DateTime? lastIncorrectAt;
+
+  const ConceptMastery({
+    required this.concept,
+    required this.correctAnswers,
+    required this.attempts,
+    required this.lastIncorrectAt,
+  });
+
+  double get accuracy => attempts == 0 ? 0 : correctAnswers / attempts;
+  MasteryStatus get status => attempts >= 3 && accuracy >= 0.8
+      ? MasteryStatus.mastered
+      : accuracy >= 0.5
+      ? MasteryStatus.learning
+      : MasteryStatus.needsReview;
+}
+
+@immutable
+class ReviewRecommendation {
+  final ConceptMastery mastery;
+  final String quizId;
+  final String quizTitle;
+
+  const ReviewRecommendation({
+    required this.mastery,
+    required this.quizId,
+    required this.quizTitle,
+  });
+
+  String get reason => mastery.attempts == 1
+      ? 'Recommended because your latest answer for this concept was incorrect.'
+      : 'Recommended after ${mastery.attempts} answers with ${(mastery.accuracy * 100).round()}% accuracy.';
+}
+
 class AttemptHistoryProvider extends ChangeNotifier {
   final AttemptRepository attemptRepository;
   final QuizRepository quizRepository;
@@ -39,10 +80,15 @@ class AttemptHistoryProvider extends ChangeNotifier {
 
   AttemptHistoryLoadState _state = AttemptHistoryLoadState.initial;
   List<AttemptHistoryEntry> _entries = const [];
+  List<ConceptMastery> _conceptMastery = const [];
+  List<ReviewRecommendation> _dailyReviewQueue = const [];
   Object? _error;
 
   AttemptHistoryLoadState get state => _state;
   List<AttemptHistoryEntry> get entries => List.unmodifiable(_entries);
+  List<ConceptMastery> get conceptMastery => List.unmodifiable(_conceptMastery);
+  List<ReviewRecommendation> get dailyReviewQueue =>
+      List.unmodifiable(_dailyReviewQueue);
   Object? get error => _error;
   bool get isLoading => _state == AttemptHistoryLoadState.loading;
   int get completedAttemptCount => _entries.length;
@@ -88,6 +134,8 @@ class AttemptHistoryProvider extends ChangeNotifier {
     try {
       final attempts = await attemptRepository.getCompleted();
       final loadedEntries = <AttemptHistoryEntry>[];
+      final mastery = <String, _MutableMastery>{};
+      final recommendationQuiz = <String, ({String id, String title})>{};
       for (final attempt in attempts) {
         final quiz = await quizRepository.getById(attempt.quizId);
         if (quiz == null) continue;
@@ -95,12 +143,26 @@ class AttemptHistoryProvider extends ChangeNotifier {
         final answersByQuestion = {
           for (final answer in attempt.answers) answer.questionId: answer.value,
         };
-        final correctAnswers = quiz.questions
-            .where(
-              (question) =>
-                  answersByQuestion[question.id] == question.correctAnswer,
-            )
-            .length;
+        var correctAnswers = 0;
+        for (final question in quiz.questions) {
+          final correct = question.isCorrectAnswer(
+            answersByQuestion[question.id],
+          );
+          if (correct) correctAnswers++;
+          for (final concept in question.concepts) {
+            final value = mastery.putIfAbsent(
+              concept.id,
+              () => _MutableMastery(concept),
+            );
+            value.attempts++;
+            if (correct) {
+              value.correctAnswers++;
+            } else {
+              value.lastIncorrectAt = attempt.completedAt ?? attempt.startedAt;
+              recommendationQuiz[concept.id] = (id: quiz.id, title: quiz.title);
+            }
+          }
+        }
         loadedEntries.add(
           AttemptHistoryEntry(
             attempt: attempt,
@@ -111,6 +173,21 @@ class AttemptHistoryProvider extends ChangeNotifier {
         );
       }
       _entries = List.unmodifiable(loadedEntries);
+      _conceptMastery = mastery.values.map((value) => value.freeze()).toList()
+        ..sort((a, b) => a.accuracy.compareTo(b.accuracy));
+      _dailyReviewQueue = _conceptMastery
+          .where((item) => item.status != MasteryStatus.mastered)
+          .where((item) => recommendationQuiz.containsKey(item.concept.id))
+          .take(10)
+          .map((item) {
+            final quiz = recommendationQuiz[item.concept.id]!;
+            return ReviewRecommendation(
+              mastery: item,
+              quizId: quiz.id,
+              quizTitle: quiz.title,
+            );
+          })
+          .toList(growable: false);
       _state = AttemptHistoryLoadState.ready;
     } catch (error) {
       _error = error;
@@ -129,4 +206,20 @@ class AttemptHistoryProvider extends ChangeNotifier {
 
   DateTime _previousCalendarDay(DateTime value) =>
       DateTime(value.year, value.month, value.day - 1);
+}
+
+class _MutableMastery {
+  final Concept concept;
+  int correctAnswers = 0;
+  int attempts = 0;
+  DateTime? lastIncorrectAt;
+
+  _MutableMastery(this.concept);
+
+  ConceptMastery freeze() => ConceptMastery(
+    concept: concept,
+    correctAnswers: correctAnswers,
+    attempts: attempts,
+    lastIncorrectAt: lastIncorrectAt,
+  );
 }

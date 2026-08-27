@@ -27,6 +27,7 @@ import 'package:quiz_moi_app/features/learning/presentation/state/saved_quiz_pro
 import 'package:quiz_moi_app/features/learning/presentation/state/attempt_history_provider.dart';
 import 'package:quiz_moi_app/features/learning/presentation/state/knowledge_base_provider.dart';
 import 'package:quiz_moi_app/features/learning/presentation/state/learner_settings_provider.dart';
+import 'package:quiz_moi_app/features/learning/presentation/state/source_document_provider.dart';
 import 'package:quiz_moi_app/features/quiz_generation/presentation/state/quiz_generation_provider.dart';
 import 'package:quiz_moi_app/features/quiz_generation/domain/quiz_generation_gateway.dart';
 import 'package:quiz_moi_app/features/quiz_generation/domain/quiz_generation_models.dart';
@@ -73,11 +74,12 @@ Widget _testApp(
   final effectiveLearnerSettingsProvider =
       learnerSettingsProvider ??
       (LearnerSettingsProvider(MemoryLearnerSettingsRepository())..load());
+  final sourceRepository = MemorySourceDocumentRepository();
+  final sourceDocumentProvider = SourceDocumentProvider(sourceRepository)
+    ..load();
   return MultiProvider(
     providers: [
-      Provider<SourceDocumentRepository>.value(
-        value: MemorySourceDocumentRepository(),
-      ),
+      Provider<SourceDocumentRepository>.value(value: sourceRepository),
       ChangeNotifierProvider(
         create: (_) => QuizGenerationProvider(
           gateway: quizGenerationGateway ?? FakeQuizGenerationGateway(),
@@ -88,6 +90,7 @@ Widget _testApp(
       ChangeNotifierProvider.value(value: historyProvider),
       ChangeNotifierProvider.value(value: knowledgeBaseProvider),
       ChangeNotifierProvider.value(value: effectiveLearnerSettingsProvider),
+      ChangeNotifierProvider.value(value: sourceDocumentProvider),
     ],
     child: MaterialApp(
       builder: (context, child) => MediaQuery(
@@ -200,6 +203,7 @@ void main() {
     );
     expect(tester.widget<ElevatedButton>(nextButton).onPressed, isNull);
 
+    await tester.ensureVisible(find.text('Journalier'));
     await tester.tap(find.text('Journalier'));
     await tester.pump();
 
@@ -277,6 +281,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Previous'));
     await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Journalier'));
     await tester.tap(find.text('Journalier'));
     await tester.pump();
 
@@ -606,6 +611,27 @@ void main() {
     expect(find.text('Review area: vocabulary'), findsOneWidget);
   });
 
+  testWidgets('Skipped questions never produce perfect-score feedback', (
+    WidgetTester tester,
+  ) async {
+    final provider = QuizProvider()..startQuiz('test');
+    while (provider.currentQuestionIndex < 9) {
+      provider.skipQuestion();
+    }
+    provider.completeQuiz();
+
+    await tester.pumpWidget(_testApp(provider, const ResultsFeedbackScreen()));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Perfect score! You got every question right. Excellent work!'),
+      findsNothing,
+    );
+    expect(find.text('WRONG / SKIPPED'), findsOneWidget);
+    expect(find.text('10'), findsAtLeastNWidgets(1));
+    expect(find.text('No Answer:'), findsAtLeastNWidgets(1));
+  });
+
   testWidgets('Main screens support narrow phones with enlarged text', (
     WidgetTester tester,
   ) async {
@@ -631,8 +657,9 @@ void main() {
         ),
       );
       await tester.pump();
+      final layoutException = tester.takeException();
       expect(
-        tester.takeException(),
+        layoutException,
         isNull,
         reason: '${entry.key} should not overflow with enlarged text.',
       );

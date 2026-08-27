@@ -49,6 +49,14 @@ No Version 1 feature is removed by this ordering.
 - **Try Demo Quiz** remains a clearly separate offline sample.
 - Entered text remains available after recoverable failures and can be retried.
 
+## Phase 4 scoring and mastery rules
+
+- Typed answers ignore capitalization, surrounding whitespace, repeated internal whitespace, and trailing `.`, `!`, `?`, `;`, or `,` characters.
+- French accents remain significant. A canonical answer and explicitly stored alternatives receive full credit; other answers receive zero credit. Version 1 does not award partial credit.
+- A concept is mastered after at least three answers with 80% or better accuracy, learning at 50–79%, and needs review below 50%.
+- Incorrect concepts enter a daily queue linked to an available saved quiz, with a plain-language reason for the recommendation.
+- Imported text can contain up to 60,000 characters. The prototype samples its beginning, middle, and ending within a 12,000-character model budget.
+
 ## Complete Version 1 capabilities
 
 ### Content

@@ -9,6 +9,8 @@ class QuizGenerationRequest {
   final String cefrLevel;
   final String difficulty;
   final int questionCount;
+  final List<QuestionType> questionTypes;
+  final int? timeLimitMinutes;
 
   const QuizGenerationRequest({
     this.schemaVersion = 1,
@@ -18,6 +20,8 @@ class QuizGenerationRequest {
     required this.cefrLevel,
     this.difficulty = 'medium',
     this.questionCount = 10,
+    this.questionTypes = const [QuestionType.multipleChoice],
+    this.timeLimitMinutes,
   });
 
   Map<String, Object?> toJson() => {
@@ -28,8 +32,24 @@ class QuizGenerationRequest {
     'cefrLevel': cefrLevel,
     'difficulty': difficulty,
     'questionCount': questionCount,
-    'questionTypes': const ['multipleChoice'],
+    'questionTypes': questionTypes.map((type) => type.name).toList(),
   };
+
+  QuizGenerationRequest copyWith({
+    String? requestId,
+    int? questionCount,
+    List<QuestionType>? questionTypes,
+  }) => QuizGenerationRequest(
+    schemaVersion: schemaVersion,
+    requestId: requestId ?? this.requestId,
+    sourceTitle: sourceTitle,
+    sourceText: sourceText,
+    cefrLevel: cefrLevel,
+    difficulty: difficulty,
+    questionCount: questionCount ?? this.questionCount,
+    questionTypes: questionTypes ?? this.questionTypes,
+    timeLimitMinutes: timeLimitMinutes,
+  );
 }
 
 class PdfQuizGenerationRequest {
@@ -41,6 +61,8 @@ class PdfQuizGenerationRequest {
   final String cefrLevel;
   final String difficulty;
   final int questionCount;
+  final List<QuestionType> questionTypes;
+  final int? timeLimitMinutes;
 
   const PdfQuizGenerationRequest({
     this.schemaVersion = 1,
@@ -51,6 +73,36 @@ class PdfQuizGenerationRequest {
     required this.cefrLevel,
     this.difficulty = 'medium',
     this.questionCount = 10,
+    this.questionTypes = const [QuestionType.multipleChoice],
+    this.timeLimitMinutes,
+  });
+}
+
+class ImageQuizGenerationRequest {
+  final int schemaVersion;
+  final String requestId;
+  final String sourceTitle;
+  final String fileName;
+  final String mimeType;
+  final Uint8List imageBytes;
+  final String cefrLevel;
+  final String difficulty;
+  final int questionCount;
+  final List<QuestionType> questionTypes;
+  final int? timeLimitMinutes;
+
+  const ImageQuizGenerationRequest({
+    this.schemaVersion = 1,
+    required this.requestId,
+    required this.sourceTitle,
+    required this.fileName,
+    required this.mimeType,
+    required this.imageBytes,
+    required this.cefrLevel,
+    this.difficulty = 'medium',
+    this.questionCount = 10,
+    this.questionTypes = const [QuestionType.multipleChoice],
+    this.timeLimitMinutes,
   });
 }
 
@@ -74,19 +126,26 @@ class WebArticleSourcePreview {
 
 class GeneratedQuestionDraft {
   final String prompt;
+  final QuestionType type;
   final List<AnswerOption> options;
-  final String correctOptionId;
+  final String correctAnswer;
+  final List<String> acceptedAnswers;
   final QuestionExplanation explanation;
   final List<Concept> concepts;
 
   GeneratedQuestionDraft({
     required this.prompt,
+    this.type = QuestionType.multipleChoice,
     required List<AnswerOption> options,
-    required this.correctOptionId,
+    required this.correctAnswer,
+    List<String> acceptedAnswers = const [],
     required this.explanation,
     required List<Concept> concepts,
   }) : options = List.unmodifiable(options),
+       acceptedAnswers = List.unmodifiable(acceptedAnswers),
        concepts = List.unmodifiable(concepts);
+
+  String get correctOptionId => correctAnswer;
 }
 
 class GeneratedQuizDraft {
