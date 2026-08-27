@@ -1,4 +1,7 @@
+import 'dart:typed_data';
+
 import 'package:flutter_test/flutter_test.dart';
+import 'package:quiz_moi_app/features/learning/domain/entities/learning_entities.dart';
 import 'package:quiz_moi_app/features/quiz_generation/presentation/state/quiz_generation_provider.dart';
 import 'package:quiz_moi_app/features/quiz_generation/domain/quiz_generation_models.dart';
 
@@ -55,5 +58,26 @@ void main() {
     expect(provider.state, QuizGenerationState.failure);
     expect(provider.canRetry, isTrue);
     expect(provider.request!.sourceText, sourceText);
+  });
+
+  test('maps a generated PDF quiz to PDF source metadata', () async {
+    final gateway = FakeQuizGenerationGateway();
+    final provider = QuizGenerationProvider(gateway: gateway);
+
+    expect(
+      provider.preparePdf(
+        sourceTitle: 'Une leçon française',
+        fileName: 'lecon.pdf',
+        pdfBytes: Uint8List.fromList('%PDF-1.4\ntest'.codeUnits),
+        cefrLevel: 'B1',
+      ),
+      isTrue,
+    );
+    expect(await provider.generate(), isTrue);
+
+    expect(provider.sourceDocument!.type, SourceType.pdf);
+    expect(provider.sourceDocument!.title, 'Une leçon française');
+    expect(provider.sourceDocument!.content, 'PDF source: lecon.pdf');
+    expect(provider.draftQuiz!.questions, hasLength(10));
   });
 }

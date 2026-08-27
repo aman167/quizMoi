@@ -5,6 +5,8 @@
 // gestures. You can also use WidgetTester to find child widgets in the widget
 // tree, read text, and verify that the values of widget properties are correct.
 
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
@@ -26,8 +28,24 @@ import 'package:quiz_moi_app/features/learning/presentation/state/attempt_histor
 import 'package:quiz_moi_app/features/learning/presentation/state/knowledge_base_provider.dart';
 import 'package:quiz_moi_app/features/learning/presentation/state/learner_settings_provider.dart';
 import 'package:quiz_moi_app/features/quiz_generation/presentation/state/quiz_generation_provider.dart';
+import 'package:quiz_moi_app/features/source_ingestion/domain/pdf_source_picker.dart';
 
 import 'support/fake_quiz_generation_gateway.dart';
+
+class _FakePdfSourcePicker implements PdfSourcePicker {
+  final SelectedPdfSource? result;
+  final PdfSelectionException? error;
+  int callCount = 0;
+
+  _FakePdfSourcePicker({this.result, this.error});
+
+  @override
+  Future<SelectedPdfSource?> pickPdf() async {
+    callCount++;
+    if (error != null) throw error!;
+    return result;
+  }
+}
 
 Widget _testApp(
   QuizProvider provider,
@@ -388,6 +406,71 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets('Selected PDF reaches the source preview with safe metadata', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final picker = _FakePdfSourcePicker(
+      result: SelectedPdfSource(
+        fileName: 'La routine de Lucie.pdf',
+        title: 'La routine de Lucie',
+        bytes: Uint8List.fromList('%PDF-1.4\ntest'.codeUnits),
+      ),
+    );
+    await tester.pumpWidget(
+      _testApp(QuizProvider(), UploadContentScreen(pdfSourcePicker: picker)),
+    );
+
+    await tester.ensureVisible(find.byTooltip('Import PDF'));
+    await tester.tap(find.byTooltip('Import PDF'));
+    await tester.pumpAndSettle();
+
+    expect(picker.callCount, 1);
+    expect(find.text('La routine de Lucie.pdf'), findsOneWidget);
+    expect(find.textContaining('Ready for AI reading'), findsOneWidget);
+
+    await tester.ensureVisible(find.text('Preview & Generate'));
+    await tester.tap(find.text('Preview & Generate'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Preview your source'), findsOneWidget);
+    expect(find.text('La routine de Lucie'), findsOneWidget);
+    expect(find.textContaining('PDF • B1'), findsOneWidget);
+  });
+
+  testWidgets(
+    'PDF import error preserves text already entered by the learner',
+    (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(800, 1400);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      const existingText = 'Texte que je ne veux pas perdre.';
+      final picker = _FakePdfSourcePicker(
+        error: const PdfSelectionException(
+          PdfSelectionErrorCode.unreadable,
+          'This PDF could not be read.',
+        ),
+      );
+      await tester.pumpWidget(
+        _testApp(QuizProvider(), UploadContentScreen(pdfSourcePicker: picker)),
+      );
+      await tester.enterText(find.byType(TextField), existingText);
+
+      await tester.ensureVisible(find.byTooltip('Import PDF'));
+      await tester.tap(find.byTooltip('Import PDF'));
+      await tester.pumpAndSettle();
+
+      expect(find.text(existingText), findsOneWidget);
+      expect(find.text('This PDF could not be read.'), findsOneWidget);
+    },
+  );
 
   testWidgets('Generated results use persisted explanation and concepts', (
     WidgetTester tester,

@@ -7,9 +7,13 @@ import '../features/learning/presentation/screens/manual_quiz_editor_screen.dart
 import '../features/learning/domain/entities/learning_entities.dart';
 import '../features/learning/presentation/state/learner_settings_provider.dart';
 import '../features/quiz_generation/presentation/state/quiz_generation_provider.dart';
+import '../features/source_ingestion/data/android_pdf_source_picker.dart';
+import '../features/source_ingestion/domain/pdf_source_picker.dart';
 
 class UploadContentScreen extends StatefulWidget {
-  const UploadContentScreen({super.key});
+  final PdfSourcePicker? pdfSourcePicker;
+
+  const UploadContentScreen({super.key, this.pdfSourcePicker});
 
   @override
   State<UploadContentScreen> createState() => _UploadContentScreenState();
@@ -18,7 +22,13 @@ class UploadContentScreen extends StatefulWidget {
 class _UploadContentScreenState extends State<UploadContentScreen> {
   int _selectedTab = 0; // 0: Quiz, 1: Flashcards, 2: Notes
   bool _optionsExpanded = false;
+  bool _isImportingPdf = false;
   final TextEditingController _textController = TextEditingController();
+  SelectedPdfSource? _importedPdf;
+  String? _pdfImportError;
+
+  PdfSourcePicker get _pdfSourcePicker =>
+      widget.pdfSourcePicker ?? const AndroidPdfSourcePicker();
 
   void _showComingSoon(String feature) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -33,13 +43,26 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
         .read<LearnerSettingsProvider>()
         .settings
         .cefrLevel;
-    if (!generation.prepareSource(
-      text: _textController.text,
-      cefrLevel: cefrLevel,
-    )) {
+    final prepared = _importedPdf == null
+        ? generation.prepareSource(
+            text: _textController.text,
+            cefrLevel: cefrLevel,
+          )
+        : generation.preparePdf(
+            sourceTitle: _importedPdf!.title,
+            fileName: _importedPdf!.fileName,
+            pdfBytes: _importedPdf!.bytes,
+            cefrLevel: cefrLevel,
+          );
+    if (!prepared) {
       return;
     }
-    final request = generation.request!;
+    final textRequest = generation.request;
+    final pdfRequest = generation.pdfRequest;
+    final sourceTitle = textRequest?.sourceTitle ?? pdfRequest!.sourceTitle;
+    final sourceSummary = textRequest == null
+        ? '${_formatBytes(pdfRequest!.pdfBytes.length)} PDF • ${pdfRequest.cefrLevel} • 10 multiple-choice questions'
+        : '${textRequest.sourceText.length} characters • ${textRequest.cefrLevel} • 10 multiple-choice questions';
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -51,12 +74,22 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                '${request.sourceText.length} characters • ${request.cefrLevel} • 10 multiple-choice questions',
+                sourceTitle,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                sourceSummary,
                 style: const TextStyle(fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 12),
-              const Text(
-                'Confirm that this is the study material you want to send to the local quizMoi backend.',
+              Text(
+                textRequest == null
+                    ? 'The full PDF will go to your local quizMoi backend, which sends it to OpenAI so the model can read its text and pages. Your API key stays on the backend.'
+                    : 'Confirm that this is the study material you want to send to the local quizMoi backend.',
               ),
               const SizedBox(height: 12),
               Flexible(
@@ -68,7 +101,17 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(color: AppColors.outlineVariant),
                   ),
-                  child: SingleChildScrollView(child: Text(request.sourceText)),
+                  child: SingleChildScrollView(
+                    child: textRequest == null
+                        ? Row(
+                            children: [
+                              const Icon(Icons.picture_as_pdf, size: 32),
+                              const SizedBox(width: 12),
+                              Expanded(child: Text(pdfRequest!.fileName)),
+                            ],
+                          )
+                        : Text(textRequest.sourceText),
+                  ),
                 ),
               ),
             ],
@@ -128,6 +171,52 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
       context,
       MaterialPageRoute(builder: (context) => const ActiveTestingScreen()),
     );
+  }
+
+  Future<void> _importPdf() async {
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _isImportingPdf = true;
+      _pdfImportError = null;
+    });
+    try {
+      final imported = await _pdfSourcePicker.pickPdf();
+      if (!mounted || imported == null) return;
+      context.read<QuizGenerationProvider>().reset();
+      setState(() => _importedPdf = imported);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '${imported.fileName} selected. Preview it before sending it for quiz generation.',
+          ),
+        ),
+      );
+    } on PdfSelectionException catch (error) {
+      if (mounted) setState(() => _pdfImportError = error.message);
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _pdfImportError =
+              'The PDF could not be imported. Your existing text was not changed.';
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _isImportingPdf = false);
+    }
+  }
+
+  void _removeImportedPdf() {
+    context.read<QuizGenerationProvider>().reset();
+    setState(() {
+      _importedPdf = null;
+      _pdfImportError = null;
+    });
+  }
+
+  String _formatBytes(int bytes) {
+    if (bytes < 1024) return '$bytes bytes';
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
   }
 
   @override
@@ -420,7 +509,7 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
                               SizedBox(width: 8),
                               Expanded(
                                 child: Text(
-                                  'Phase 3 sends confirmed text to your local quizMoi server. Your OpenAI key stays on the computer, never in Android.',
+                                  'Phase 4 can send a confirmed PDF through your local quizMoi backend so OpenAI can read its text and page images. Your API key stays on the computer.',
                                   style: TextStyle(fontSize: 12),
                                 ),
                               ),
@@ -483,7 +572,9 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
                                 children: [
                                   _buildCircleIconButton(
                                     Icons.upload_file,
-                                    'Upload Document',
+                                    'Import PDF',
+                                    onPressed: _importPdf,
+                                    enabled: !_isImportingPdf,
                                   ),
                                   const SizedBox(width: 8),
                                   _buildCircleIconButton(
@@ -495,6 +586,70 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
                             ),
                           ],
                         ),
+                        if (_isImportingPdf) ...[
+                          const SizedBox(height: 12),
+                          const LinearProgressIndicator(),
+                          const SizedBox(height: 8),
+                          const Text('Opening the Android PDF picker…'),
+                        ],
+                        if (_importedPdf != null) ...[
+                          const SizedBox(height: 12),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: AppColors.secondaryContainer,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.picture_as_pdf),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        _importedPdf!.fileName,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      Text(
+                                        '${_formatBytes(_importedPdf!.fileSizeBytes)} • Ready for AI reading',
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                IconButton(
+                                  onPressed: _removeImportedPdf,
+                                  tooltip: 'Remove imported PDF',
+                                  icon: const Icon(Icons.close),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                        if (_pdfImportError != null) ...[
+                          const SizedBox(height: 12),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: AppColors.errorContainer,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Icon(Icons.error_outline),
+                                const SizedBox(width: 8),
+                                Expanded(child: Text(_pdfImportError!)),
+                              ],
+                            ),
+                          ),
+                        ],
                         const SizedBox(height: 18),
 
                         // Tips
@@ -512,7 +667,7 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
                           'Type or paste any text content (e.g., French literature excerpts)',
                         ),
                         _buildTipItem(
-                          'PDF and web article input arrive in Phase 4',
+                          'Import PDFs up to 10 MB; OpenAI can read both text and scanned page images',
                         ),
                         _buildTipItem(
                           'The first prototype creates 10 medium multiple-choice questions',
@@ -524,7 +679,8 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
                         SizedBox(
                           width: double.infinity,
                           child: ElevatedButton(
-                            onPressed: generation.isGenerating
+                            onPressed:
+                                generation.isGenerating || _isImportingPdf
                                 ? null
                                 : _previewSource,
                             style: ElevatedButton.styleFrom(
@@ -658,7 +814,12 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
     );
   }
 
-  Widget _buildCircleIconButton(IconData icon, String tooltip) {
+  Widget _buildCircleIconButton(
+    IconData icon,
+    String tooltip, {
+    VoidCallback? onPressed,
+    bool enabled = true,
+  }) {
     return Container(
       width: 36,
       height: 36,
@@ -672,7 +833,7 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
       child: IconButton(
         icon: Icon(icon, size: 18, color: AppColors.onSurface),
         padding: EdgeInsets.zero,
-        onPressed: () => _showComingSoon(tooltip),
+        onPressed: enabled ? onPressed ?? () => _showComingSoon(tooltip) : null,
         tooltip: tooltip,
       ),
     );

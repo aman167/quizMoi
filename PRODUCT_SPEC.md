@@ -18,7 +18,7 @@ The first learner is the owner: an independent beginner-to-intermediate French l
 The product will be created in complete vertical slices and polished afterward:
 
 1. The first prototype supports pasted text and AI-generated multiple-choice quizzes.
-2. The next breadth pass adds PDF, web articles, typed answers, session controls, and personalized review.
+2. The next breadth pass adds PDF, camera-captured study images, web articles, typed answers, session controls, and personalized review.
 3. Self-use comes before hosting for other testers.
 4. Private-beta hosting, security, signing, and distribution come before comprehensive polish.
 5. Public-release work remains a later evidence-based decision.
@@ -28,8 +28,8 @@ No Version 1 feature is removed by this ordering.
 ## Version 1 learning loop
 
 1. Open quizMoi and see saved material, current work, and real progress.
-2. Paste text, select a PDF, or enter a supported article URL.
-3. Preview and confirm the extracted source.
+2. Paste text, select a PDF, photograph study material, or enter a supported article URL.
+3. Preview and confirm pasted/URL text, PDF metadata, or the captured image before the material leaves the device.
 4. Choose difficulty, question types, and count.
 5. Generate validated questions through a quizMoi-controlled backend.
 6. Edit, remove, reorder, or regenerate questions before saving.
@@ -54,7 +54,8 @@ No Version 1 feature is removed by this ordering.
 ### Content
 
 - Pasted French or bilingual text
-- Text-based PDFs
+- PDFs sent through the quizMoi backend as OpenAI file input after explicit confirmation
+- Camera-captured pages sent through the quizMoi backend as OpenAI image input after preview and explicit confirmation
 - Supported public web articles
 - Preview, validation, source references, and deletion
 - Clear empty, unsupported, oversized, protected, scanned, and unreachable states
@@ -92,12 +93,15 @@ No Version 1 feature is removed by this ordering.
 - Controls expose labels and selected state to accessibility services.
 - French accents and common input methods work correctly.
 - Loading, empty, error, retry, offline, and unavailable states use clear language.
+- Android camera permission is requested only when the learner chooses the camera action, with a usable denial/retry path.
 - Dark mode remains deferred until after the complete learning loop.
 
 ## Privacy and AI
 
 - LLM credentials never enter the Android application or repository.
 - AI calls pass through a quizMoi-controlled backend.
+- Confirmed PDFs are uploaded to the local backend and included directly in a Responses API request; Flutter never receives the OpenAI credential.
+- Confirmed camera images follow the same backend-only credential boundary and are not uploaded before the learner previews and accepts the photograph.
 - Imported material and learner answers are private by default and excluded from logs.
 - Generated output is schema-validated and grounded before presentation.
 - Learners can delete imported sources and generated study data.
@@ -105,7 +109,6 @@ No Version 1 feature is removed by this ordering.
 ## Deferred beyond Version 1
 
 - YouTube transcription
-- Camera and image ingestion
 - Flashcards and generated notes
 - Social features and leaderboards
 - Subscriptions and payments

@@ -24,23 +24,32 @@ class QuizGenerationProvider extends ChangeNotifier {
 
   QuizGenerationState _state = QuizGenerationState.idle;
   QuizGenerationRequest? _request;
+  PdfQuizGenerationRequest? _pdfRequest;
   QuizDefinition? _draftQuiz;
   SourceDocument? _sourceDocument;
   String? _errorCode;
   String? _errorMessage;
+  SourceType _sourceType = SourceType.pastedText;
   int _idCounter = 0;
 
   QuizGenerationState get state => _state;
   QuizGenerationRequest? get request => _request;
+  PdfQuizGenerationRequest? get pdfRequest => _pdfRequest;
   QuizDefinition? get draftQuiz => _draftQuiz;
   SourceDocument? get sourceDocument => _sourceDocument;
   String? get errorCode => _errorCode;
   String? get errorMessage => _errorMessage;
   bool get isGenerating => _state == QuizGenerationState.generating;
   bool get canRetry =>
-      _request != null && _state == QuizGenerationState.failure;
+      (_request != null || _pdfRequest != null) &&
+      _state == QuizGenerationState.failure;
 
-  bool prepareSource({required String text, required String cefrLevel}) {
+  bool prepareSource({
+    required String text,
+    required String cefrLevel,
+    String sourceTitle = 'Pasted French study text',
+    SourceType sourceType = SourceType.pastedText,
+  }) {
     _state = QuizGenerationState.validating;
     _clearError();
     notifyListeners();
@@ -62,10 +71,51 @@ class QuizGenerationProvider extends ChangeNotifier {
     }
 
     _request = QuizGenerationRequest(
-      sourceTitle: 'Pasted French study text',
+      sourceTitle: sourceTitle.trim().isEmpty
+          ? 'French study material'
+          : sourceTitle.trim(),
       sourceText: trimmed,
       cefrLevel: cefrLevel,
     );
+    _pdfRequest = null;
+    _sourceType = sourceType;
+    _state = QuizGenerationState.previewing;
+    notifyListeners();
+    return true;
+  }
+
+  bool preparePdf({
+    required String sourceTitle,
+    required String fileName,
+    required Uint8List pdfBytes,
+    required String cefrLevel,
+  }) {
+    _state = QuizGenerationState.validating;
+    _clearError();
+    notifyListeners();
+
+    if (pdfBytes.isEmpty || !fileName.toLowerCase().endsWith('.pdf')) {
+      _fail('invalid_source', 'Choose a readable PDF file first.');
+      return false;
+    }
+    if (pdfBytes.length > 10 * 1024 * 1024) {
+      _fail(
+        'invalid_source',
+        'This prototype accepts PDFs up to 10 MB to control generation time and cost.',
+      );
+      return false;
+    }
+
+    _pdfRequest = PdfQuizGenerationRequest(
+      sourceTitle: sourceTitle.trim().isEmpty
+          ? 'Imported PDF'
+          : sourceTitle.trim(),
+      fileName: fileName,
+      pdfBytes: pdfBytes,
+      cefrLevel: cefrLevel,
+    );
+    _request = null;
+    _sourceType = SourceType.pdf;
     _state = QuizGenerationState.previewing;
     notifyListeners();
     return true;
@@ -73,22 +123,30 @@ class QuizGenerationProvider extends ChangeNotifier {
 
   Future<bool> generate() async {
     final generationRequest = _request;
-    if (generationRequest == null) {
-      _fail('invalid_source', 'Paste and preview study text first.');
+    final pdfGenerationRequest = _pdfRequest;
+    if (generationRequest == null && pdfGenerationRequest == null) {
+      _fail('invalid_source', 'Add and preview study material first.');
       return false;
     }
     _state = QuizGenerationState.generating;
     _clearError();
     notifyListeners();
     try {
-      final generated = await gateway.generate(generationRequest);
+      final generated = pdfGenerationRequest == null
+          ? await gateway.generate(generationRequest!)
+          : await gateway.generatePdf(pdfGenerationRequest);
       final now = _now();
       final sourceId = _newId('source');
+      final sourceTitle =
+          generationRequest?.sourceTitle ?? pdfGenerationRequest!.sourceTitle;
+      final sourceContent =
+          generationRequest?.sourceText ??
+          'PDF source: ${pdfGenerationRequest!.fileName}';
       _sourceDocument = SourceDocument(
         id: sourceId,
-        title: generationRequest.sourceTitle,
-        type: SourceType.pastedText,
-        content: generationRequest.sourceText,
+        title: sourceTitle,
+        type: _sourceType,
+        content: sourceContent,
         createdAt: now,
       );
       _draftQuiz = QuizDefinition(
@@ -146,8 +204,10 @@ class QuizGenerationProvider extends ChangeNotifier {
   void reset() {
     _state = QuizGenerationState.idle;
     _request = null;
+    _pdfRequest = null;
     _draftQuiz = null;
     _sourceDocument = null;
+    _sourceType = SourceType.pastedText;
     _clearError();
     notifyListeners();
   }

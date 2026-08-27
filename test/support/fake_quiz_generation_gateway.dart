@@ -15,6 +15,15 @@ class FakeQuizGenerationGateway implements QuizGenerationGateway {
     if (error != null) throw error!;
     return result ?? generatedDraft(questionCount: request.questionCount);
   }
+
+  @override
+  Future<GeneratedQuizDraft> generatePdf(
+    PdfQuizGenerationRequest request,
+  ) async {
+    callCount++;
+    if (error != null) throw error!;
+    return result ?? generatedDraft(questionCount: request.questionCount);
+  }
 }
 
 GeneratedQuizDraft generatedDraft({int questionCount = 10}) {

@@ -1,4 +1,5 @@
 import '../../learning/domain/entities/learning_entities.dart';
+import 'dart:typed_data';
 
 class QuizGenerationRequest {
   final int schemaVersion;
@@ -26,6 +27,26 @@ class QuizGenerationRequest {
     'questionCount': questionCount,
     'questionTypes': const ['multipleChoice'],
   };
+}
+
+class PdfQuizGenerationRequest {
+  final int schemaVersion;
+  final String sourceTitle;
+  final String fileName;
+  final Uint8List pdfBytes;
+  final String cefrLevel;
+  final String difficulty;
+  final int questionCount;
+
+  const PdfQuizGenerationRequest({
+    this.schemaVersion = 1,
+    required this.sourceTitle,
+    required this.fileName,
+    required this.pdfBytes,
+    required this.cefrLevel,
+    this.difficulty = 'medium',
+    this.questionCount = 10,
+  });
 }
 
 class GeneratedQuestionDraft {

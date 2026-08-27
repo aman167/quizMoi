@@ -52,3 +52,15 @@ This log records issues found during emulator and self-use testing. Entries stay
 - **Tradeoff:** Removing mandatory review reduces answer leakage and friction, but it also removes the learner’s manual quality gate for ambiguous or factually weak AI questions. Structural and grounding validation already blocks malformed output, but it cannot guarantee that every question is pedagogically strong. The final design should combine immediate play with an easy **Report/Edit Question** action.
 - **Decisions needed:** Choose the default knowledge-base assignment, generated title behavior, save-failure recovery, whether to offer **Start Now** versus **Review First**, and where post-generation editing lives.
 - **Acceptance:** The normal generation path starts a persisted quiz without revealing answers; saving remains reliable and retryable; optional editing is still discoverable; explanations appear after submission; widget tests and an emulator check cover both the default and optional paths.
+
+## QM-004 — Successful AI response can be lost after a connection interruption
+
+- **Status:** Investigating
+- **Priority:** High
+- **Found:** 2026-08-17, real Phase 4 PDF/OpenAI emulator test
+- **Target:** Phase 4 follow-up, before routine PDF self-use
+- **Observed:** FastAPI completed `POST /v1/quizzes/generate-pdf` with `200 OK`, but Flutter displayed **The local quiz server is not reachable** and discarded the successful generated quiz. Pressing **Retry** made another provider request and then completed generation.
+- **Evidence:** Emulator logs show the virtual default network switching while the request was active. A subsequent emulator-to-host check returned three successful packets with zero loss. The current Flutter gateway maps every `http.ClientException` to `backend_unavailable`, even when the server completed the request.
+- **Expected:** A temporary interruption after server acceptance must not silently lose a completed result or require a second paid generation. The message must distinguish initial connection failure from a response interrupted after submission.
+- **Recommended direction:** Add a client-generated idempotency key, keep generation status/results temporarily on the backend, and let Flutter recover the existing result before creating another OpenAI request. Preserve the selected source and expose a clear recovery state.
+- **Acceptance:** Repeating the same generation request after a simulated response interruption returns the original result without another provider call; the learner sees accurate recovery language; focused backend and Flutter tests cover the scenario; emulator verification passes.
