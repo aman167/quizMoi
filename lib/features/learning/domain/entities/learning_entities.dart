@@ -16,6 +16,7 @@ class SourceDocument {
   final String title;
   final SourceType type;
   final String content;
+  final String? sourceUri;
   final DateTime createdAt;
 
   const SourceDocument({
@@ -23,6 +24,7 @@ class SourceDocument {
     required this.title,
     required this.type,
     required this.content,
+    this.sourceUri,
     required this.createdAt,
   });
 
@@ -31,6 +33,7 @@ class SourceDocument {
     'title': title,
     'type': type.name,
     'content': content,
+    'sourceUri': sourceUri,
     'createdAt': createdAt.toIso8601String(),
   };
 
@@ -39,6 +42,7 @@ class SourceDocument {
     title: json['title']! as String,
     type: _enumByName(SourceType.values, json['type']! as String),
     content: json['content']! as String,
+    sourceUri: json['sourceUri'] as String?,
     createdAt: DateTime.parse(json['createdAt']! as String),
   );
 }

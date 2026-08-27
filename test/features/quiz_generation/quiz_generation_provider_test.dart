@@ -95,11 +95,56 @@ void main() {
     expect(provider.sourceDocument!.content, 'PDF source: lecon.pdf');
     expect(provider.draftQuiz!.questions, hasLength(10));
   });
+
+  test('retrieves and maps a web article with its source URL', () async {
+    final gateway = FakeQuizGenerationGateway();
+    final provider = QuizGenerationProvider(gateway: gateway);
+
+    expect(
+      await provider.prepareWebArticle(
+        url: 'https://example.com/fr/bibliotheque',
+        cefrLevel: 'B1',
+      ),
+      isTrue,
+    );
+    expect(provider.state, QuizGenerationState.previewing);
+    expect(gateway.previewCallCount, 1);
+    expect(await provider.generate(), isTrue);
+
+    expect(provider.sourceDocument!.type, SourceType.webArticle);
+    expect(
+      provider.sourceDocument!.sourceUri,
+      'https://example.com/fr/bibliotheque',
+    );
+    expect(provider.sourceDocument!.content, contains('bibliothèque'));
+    expect(provider.draftQuiz!.questions, hasLength(10));
+  });
+
+  test(
+    'rejects an incomplete web article URL before calling backend',
+    () async {
+      final gateway = FakeQuizGenerationGateway();
+      final provider = QuizGenerationProvider(gateway: gateway);
+
+      expect(
+        await provider.prepareWebArticle(url: 'example.com', cefrLevel: 'B1'),
+        isFalse,
+      );
+
+      expect(provider.errorCode, 'invalid_url');
+      expect(gateway.previewCallCount, 0);
+    },
+  );
 }
 
 class _FailOnceGateway implements QuizGenerationGateway {
   final List<String> requestIds = [];
   bool _failed = false;
+
+  @override
+  Future<WebArticleSourcePreview> previewWebArticle(String url) {
+    throw UnimplementedError();
+  }
 
   @override
   Future<GeneratedQuizDraft> generate(QuizGenerationRequest request) async {

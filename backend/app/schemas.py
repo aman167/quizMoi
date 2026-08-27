@@ -54,6 +54,20 @@ class GeneratePdfQuizRequest(ApiModel):
         return value
 
 
+class WebArticlePreviewRequest(ApiModel):
+    schema_version: Literal[1] = Field(alias="schemaVersion")
+    url: str = Field(min_length=10, max_length=2048)
+
+
+class WebArticlePreviewResponse(ApiModel):
+    schema_version: Literal[1] = Field(alias="schemaVersion")
+    url: str
+    title: str = Field(min_length=1, max_length=120)
+    text: str = Field(min_length=200, max_length=12000)
+    character_count: int = Field(alias="characterCount", ge=200, le=12000)
+    was_truncated: bool = Field(alias="wasTruncated")
+
+
 class GeneratedOption(ApiModel):
     id: Literal["a", "b", "c", "d"]
     text: str = Field(min_length=1, max_length=300)

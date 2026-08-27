@@ -28,6 +28,7 @@ void main() {
       title: 'French article',
       type: SourceType.pastedText,
       content: List.filled(20, 'Bonjour tout le monde.').join(' '),
+      sourceUri: 'https://example.com/fr/article',
       createdAt: now,
     );
     await sources.save(source);
@@ -57,7 +58,9 @@ void main() {
       ),
     );
 
-    expect((await sources.getById(source.id))!.content, source.content);
+    final restoredSource = await sources.getById(source.id);
+    expect(restoredSource!.content, source.content);
+    expect(restoredSource.sourceUri, 'https://example.com/fr/article');
     expect(
       (await SqliteQuizRepository(
         database,

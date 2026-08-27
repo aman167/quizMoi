@@ -57,6 +57,7 @@ No Version 1 feature is removed by this ordering.
 - PDFs sent through the quizMoi backend as OpenAI file input after explicit confirmation
 - Camera-captured pages sent through the quizMoi backend as OpenAI image input after preview and explicit confirmation
 - Supported public web articles
+- Backend-cleaned article preview before AI generation, with the final public URL retained beside local source text
 - Preview, validation, source references, and deletion
 - Clear empty, unsupported, oversized, protected, scanned, and unreachable states
 
@@ -102,6 +103,7 @@ No Version 1 feature is removed by this ordering.
 - AI calls pass through a quizMoi-controlled backend.
 - Confirmed PDFs are uploaded to the local backend and included directly in a Responses API request; Flutter never receives the OpenAI credential.
 - Confirmed camera images follow the same backend-only credential boundary and are not uploaded before the learner previews and accepts the photograph.
+- Web URLs are retrieved only by the backend; local/private destinations, unsupported content, and common protected/paywalled pages are rejected before AI generation.
 - Imported material and learner answers are private by default and excluded from logs.
 - Generated output is schema-validated and grounded before presentation.
 - Learners can delete imported sources and generated study data.

@@ -5,9 +5,40 @@ import 'package:quiz_moi_app/features/quiz_generation/domain/quiz_generation_mod
 class FakeQuizGenerationGateway implements QuizGenerationGateway {
   final GeneratedQuizDraft? result;
   final QuizGenerationException? error;
+  final WebArticleSourcePreview? articlePreview;
+  final QuizGenerationException? articleError;
   int callCount = 0;
+  int previewCallCount = 0;
+  String? previewedUrl;
 
-  FakeQuizGenerationGateway({this.result, this.error});
+  FakeQuizGenerationGateway({
+    this.result,
+    this.error,
+    this.articlePreview,
+    this.articleError,
+  });
+
+  @override
+  Future<WebArticleSourcePreview> previewWebArticle(String url) async {
+    previewCallCount++;
+    previewedUrl = url;
+    if (articleError != null) throw articleError!;
+    return articlePreview ??
+        WebArticleSourcePreview(
+          schemaVersion: 1,
+          url: url,
+          title: 'La bibliothèque du quartier',
+          text: List.filled(
+            12,
+            'La bibliothèque accueille les habitants du quartier.',
+          ).join(' '),
+          characterCount: List.filled(
+            12,
+            'La bibliothèque accueille les habitants du quartier.',
+          ).join(' ').length,
+          wasTruncated: false,
+        );
+  }
 
   @override
   Future<GeneratedQuizDraft> generate(QuizGenerationRequest request) async {

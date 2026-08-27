@@ -101,6 +101,13 @@ void main() {
       quizColumns.map((column) => column['name']),
       contains('source_document_id'),
     );
+    final sourceColumns = await upgraded.connection.rawQuery(
+      'PRAGMA table_info(source_documents)',
+    );
+    expect(
+      sourceColumns.map((column) => column['name']),
+      contains('source_uri'),
+    );
 
     final indexRows = await upgraded.connection.rawQuery(
       "SELECT name FROM sqlite_master WHERE type = 'index'",

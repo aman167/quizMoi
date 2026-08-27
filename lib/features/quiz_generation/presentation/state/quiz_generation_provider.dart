@@ -7,6 +7,7 @@ import '../../domain/quiz_generation_models.dart';
 enum QuizGenerationState {
   idle,
   validating,
+  fetchingSource,
   previewing,
   generating,
   reviewing,
@@ -25,6 +26,7 @@ class QuizGenerationProvider extends ChangeNotifier {
   QuizGenerationState _state = QuizGenerationState.idle;
   QuizGenerationRequest? _request;
   PdfQuizGenerationRequest? _pdfRequest;
+  WebArticleSourcePreview? _webArticlePreview;
   QuizDefinition? _draftQuiz;
   SourceDocument? _sourceDocument;
   String? _errorCode;
@@ -35,11 +37,14 @@ class QuizGenerationProvider extends ChangeNotifier {
   QuizGenerationState get state => _state;
   QuizGenerationRequest? get request => _request;
   PdfQuizGenerationRequest? get pdfRequest => _pdfRequest;
+  WebArticleSourcePreview? get webArticlePreview => _webArticlePreview;
   QuizDefinition? get draftQuiz => _draftQuiz;
   SourceDocument? get sourceDocument => _sourceDocument;
   String? get errorCode => _errorCode;
   String? get errorMessage => _errorMessage;
   bool get isGenerating => _state == QuizGenerationState.generating;
+  bool get isFetchingSource => _state == QuizGenerationState.fetchingSource;
+  bool get isBusy => isGenerating || isFetchingSource;
   bool get canRetry =>
       (_request != null || _pdfRequest != null) &&
       _state == QuizGenerationState.failure;
@@ -79,6 +84,7 @@ class QuizGenerationProvider extends ChangeNotifier {
       cefrLevel: cefrLevel,
     );
     _pdfRequest = null;
+    _webArticlePreview = null;
     _sourceType = sourceType;
     _state = QuizGenerationState.previewing;
     notifyListeners();
@@ -117,10 +123,59 @@ class QuizGenerationProvider extends ChangeNotifier {
       cefrLevel: cefrLevel,
     );
     _request = null;
+    _webArticlePreview = null;
     _sourceType = SourceType.pdf;
     _state = QuizGenerationState.previewing;
     notifyListeners();
     return true;
+  }
+
+  Future<bool> prepareWebArticle({
+    required String url,
+    required String cefrLevel,
+  }) async {
+    _state = QuizGenerationState.validating;
+    _clearError();
+    notifyListeners();
+
+    final trimmed = url.trim();
+    final parsed = Uri.tryParse(trimmed);
+    if (parsed == null ||
+        !{'http', 'https'}.contains(parsed.scheme.toLowerCase()) ||
+        parsed.host.isEmpty) {
+      _fail(
+        'invalid_url',
+        'Enter a complete http:// or https:// web article URL.',
+      );
+      return false;
+    }
+
+    _state = QuizGenerationState.fetchingSource;
+    notifyListeners();
+    try {
+      final preview = await gateway.previewWebArticle(trimmed);
+      _webArticlePreview = preview;
+      _request = QuizGenerationRequest(
+        requestId: _newId('generation'),
+        sourceTitle: preview.title,
+        sourceText: preview.text,
+        cefrLevel: cefrLevel,
+      );
+      _pdfRequest = null;
+      _sourceType = SourceType.webArticle;
+      _state = QuizGenerationState.previewing;
+      notifyListeners();
+      return true;
+    } on QuizGenerationException catch (error) {
+      _fail(error.code, error.message);
+      return false;
+    } catch (_) {
+      _fail(
+        'article_unavailable',
+        'The article could not be retrieved. Your URL is still available.',
+      );
+      return false;
+    }
   }
 
   Future<bool> generate() async {
@@ -149,6 +204,7 @@ class QuizGenerationProvider extends ChangeNotifier {
         title: sourceTitle,
         type: _sourceType,
         content: sourceContent,
+        sourceUri: _webArticlePreview?.url,
         createdAt: now,
       );
       _draftQuiz = QuizDefinition(
@@ -207,6 +263,7 @@ class QuizGenerationProvider extends ChangeNotifier {
     _state = QuizGenerationState.idle;
     _request = null;
     _pdfRequest = null;
+    _webArticlePreview = null;
     _draftQuiz = null;
     _sourceDocument = null;
     _sourceType = SourceType.pastedText;

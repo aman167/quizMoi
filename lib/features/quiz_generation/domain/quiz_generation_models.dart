@@ -54,6 +54,24 @@ class PdfQuizGenerationRequest {
   });
 }
 
+class WebArticleSourcePreview {
+  final int schemaVersion;
+  final String url;
+  final String title;
+  final String text;
+  final int characterCount;
+  final bool wasTruncated;
+
+  const WebArticleSourcePreview({
+    required this.schemaVersion,
+    required this.url,
+    required this.title,
+    required this.text,
+    required this.characterCount,
+    required this.wasTruncated,
+  });
+}
+
 class GeneratedQuestionDraft {
   final String prompt;
   final List<AnswerOption> options;

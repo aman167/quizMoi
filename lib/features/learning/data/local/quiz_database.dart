@@ -2,7 +2,7 @@ import 'package:path/path.dart' as path;
 import 'package:sqflite/sqflite.dart' as sqflite;
 
 class QuizDatabase {
-  static const schemaVersion = 3;
+  static const schemaVersion = 4;
   static const databaseName = 'quiz_moi.sqlite';
 
   final sqflite.Database connection;
@@ -38,6 +38,7 @@ class QuizDatabase {
     int version,
   ) async {
     final sourceDocumentColumn = version >= 3 ? 'source_document_id TEXT,' : '';
+    final sourceUriColumn = version >= 4 ? 'source_uri TEXT,' : '';
     final sourceDocumentForeignKey = version >= 3
         ? ', FOREIGN KEY (source_document_id) REFERENCES source_documents(id) ON DELETE SET NULL'
         : '';
@@ -46,6 +47,7 @@ class QuizDatabase {
         id TEXT PRIMARY KEY,
         title TEXT NOT NULL,
         source_type TEXT NOT NULL,
+        $sourceUriColumn
         content TEXT NOT NULL,
         created_at TEXT NOT NULL
       )
@@ -187,6 +189,11 @@ class QuizDatabase {
         REFERENCES source_documents(id) ON DELETE SET NULL
       ''');
       await _createVersion3Indexes(database);
+    }
+    if (oldVersion < 4) {
+      await database.execute(
+        'ALTER TABLE source_documents ADD COLUMN source_uri TEXT',
+      );
     }
   }
 
