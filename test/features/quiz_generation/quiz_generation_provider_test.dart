@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quiz_moi_app/features/learning/domain/entities/learning_entities.dart';
+import 'package:quiz_moi_app/features/quiz_generation/domain/quiz_generation_gateway.dart';
 import 'package:quiz_moi_app/features/quiz_generation/presentation/state/quiz_generation_provider.dart';
 import 'package:quiz_moi_app/features/quiz_generation/domain/quiz_generation_models.dart';
 
@@ -60,6 +61,20 @@ void main() {
     expect(provider.request!.sourceText, sourceText);
   });
 
+  test('reuses the same request id when recovering a lost response', () async {
+    final gateway = _FailOnceGateway();
+    final provider = QuizGenerationProvider(gateway: gateway);
+    final sourceText = List.filled(20, 'Une phrase française utile.').join(' ');
+
+    provider.prepareSource(text: sourceText, cefrLevel: 'A2');
+    expect(await provider.generate(), isFalse);
+    expect(provider.errorCode, 'response_interrupted');
+    expect(await provider.generate(), isTrue);
+
+    expect(gateway.requestIds, hasLength(2));
+    expect(gateway.requestIds.toSet(), hasLength(1));
+  });
+
   test('maps a generated PDF quiz to PDF source metadata', () async {
     final gateway = FakeQuizGenerationGateway();
     final provider = QuizGenerationProvider(gateway: gateway);
@@ -80,4 +95,29 @@ void main() {
     expect(provider.sourceDocument!.content, 'PDF source: lecon.pdf');
     expect(provider.draftQuiz!.questions, hasLength(10));
   });
+}
+
+class _FailOnceGateway implements QuizGenerationGateway {
+  final List<String> requestIds = [];
+  bool _failed = false;
+
+  @override
+  Future<GeneratedQuizDraft> generate(QuizGenerationRequest request) async {
+    requestIds.add(request.requestId);
+    if (!_failed) {
+      _failed = true;
+      throw const QuizGenerationException(
+        'response_interrupted',
+        'Recover the existing result.',
+      );
+    }
+    return generatedDraft(questionCount: request.questionCount);
+  }
+
+  @override
+  Future<GeneratedQuizDraft> generatePdf(
+    PdfQuizGenerationRequest request,
+  ) async {
+    throw UnimplementedError();
+  }
 }

@@ -10,6 +10,7 @@ import 'package:quiz_moi_app/features/quiz_generation/domain/quiz_generation_mod
 
 void main() {
   final request = QuizGenerationRequest(
+    requestId: 'generation-text-1',
     sourceTitle: 'French text',
     sourceText: List.filled(20, 'Marie prend le train chaque matin.').join(' '),
     cefrLevel: 'B1',
@@ -29,7 +30,7 @@ void main() {
 
     final result = await gateway.generate(request);
 
-    expect(result.requestId, 'request-1');
+    expect(result.requestId, 'generation-text-1');
     expect(result.questions, hasLength(5));
     expect(result.questions.first.correctOptionId, 'a');
   });
@@ -65,8 +66,39 @@ void main() {
     );
   });
 
+  test(
+    'classifies a dropped response as recoverable when health works',
+    () async {
+      final client = MockClient((received) async {
+        if (received.url.path == '/health') {
+          return http.Response('{"status":"ok"}', 200);
+        }
+        throw http.ClientException('Connection closed while receiving data');
+      });
+      final gateway = HttpQuizGenerationGateway(
+        baseUrl: 'http://localhost:8000',
+        client: client,
+      );
+
+      expect(
+        () => gateway.generate(request),
+        throwsA(
+          isA<QuizGenerationException>()
+              .having((error) => error.code, 'code', 'response_interrupted')
+              .having(
+                (error) => error.message,
+                'message',
+                contains('Recover Result'),
+              ),
+        ),
+      );
+    },
+  );
+
   test('uploads PDF bytes and settings as multipart data', () async {
-    final client = _RecordingClient(_responseBody());
+    final client = _RecordingClient(
+      _responseBody(requestId: 'generation-pdf-1'),
+    );
     final gateway = HttpQuizGenerationGateway(
       baseUrl: 'http://localhost:8000',
       client: client,
@@ -75,6 +107,7 @@ void main() {
 
     final result = await gateway.generatePdf(
       PdfQuizGenerationRequest(
+        requestId: 'generation-pdf-1',
         sourceTitle: 'French PDF',
         fileName: 'lesson.pdf',
         pdfBytes: pdfBytes,
@@ -86,9 +119,11 @@ void main() {
     final request = client.request!;
     expect(request.url.path, '/v1/quizzes/generate-pdf');
     expect(request.fields['sourceTitle'], 'French PDF');
+    expect(request.fields['requestId'], 'generation-pdf-1');
     expect(request.fields['questionCount'], '5');
     expect(request.files.single.filename, 'lesson.pdf');
     expect(request.files.single.length, pdfBytes.length);
+    expect(result.requestId, 'generation-pdf-1');
     expect(result.questions, hasLength(5));
   });
 }
@@ -111,26 +146,27 @@ class _RecordingClient extends http.BaseClient {
   }
 }
 
-Map<String, Object?> _responseBody() => {
-  'schemaVersion': 1,
-  'requestId': 'request-1',
-  'title': 'Le trajet de Marie',
-  'questions': List.generate(
-    5,
-    (index) => {
-      'prompt': 'Question ${index + 1}',
-      'options': const [
-        {'id': 'a', 'text': 'En train'},
-        {'id': 'b', 'text': 'En avion'},
-        {'id': 'c', 'text': 'À vélo'},
-        {'id': 'd', 'text': 'À pied'},
-      ],
-      'correctOptionId': 'a',
-      'explanation': 'Le texte donne la réponse.',
-      'sourceExcerpt': 'Marie prend le train chaque matin.',
-      'concepts': const [
-        {'name': 'Les transports', 'category': 'vocabulary'},
-      ],
-    },
-  ),
-};
+Map<String, Object?> _responseBody({String requestId = 'generation-text-1'}) =>
+    {
+      'schemaVersion': 1,
+      'requestId': requestId,
+      'title': 'Le trajet de Marie',
+      'questions': List.generate(
+        5,
+        (index) => {
+          'prompt': 'Question ${index + 1}',
+          'options': const [
+            {'id': 'a', 'text': 'En train'},
+            {'id': 'b', 'text': 'En avion'},
+            {'id': 'c', 'text': 'À vélo'},
+            {'id': 'd', 'text': 'À pied'},
+          ],
+          'correctOptionId': 'a',
+          'explanation': 'Le texte donne la réponse.',
+          'sourceExcerpt': 'Marie prend le train chaque matin.',
+          'concepts': const [
+            {'name': 'Les transports', 'category': 'vocabulary'},
+          ],
+        },
+      ),
+    };

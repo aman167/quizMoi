@@ -28,6 +28,8 @@ import 'package:quiz_moi_app/features/learning/presentation/state/attempt_histor
 import 'package:quiz_moi_app/features/learning/presentation/state/knowledge_base_provider.dart';
 import 'package:quiz_moi_app/features/learning/presentation/state/learner_settings_provider.dart';
 import 'package:quiz_moi_app/features/quiz_generation/presentation/state/quiz_generation_provider.dart';
+import 'package:quiz_moi_app/features/quiz_generation/domain/quiz_generation_gateway.dart';
+import 'package:quiz_moi_app/features/quiz_generation/domain/quiz_generation_models.dart';
 import 'package:quiz_moi_app/features/source_ingestion/domain/pdf_source_picker.dart';
 
 import 'support/fake_quiz_generation_gateway.dart';
@@ -54,6 +56,7 @@ Widget _testApp(
   SavedQuizProvider? savedQuizProvider,
   AttemptHistoryProvider? attemptHistoryProvider,
   LearnerSettingsProvider? learnerSettingsProvider,
+  QuizGenerationGateway? quizGenerationGateway,
 }) {
   final savedProvider =
       savedQuizProvider ?? SavedQuizProvider(MemoryQuizRepository())
@@ -76,8 +79,9 @@ Widget _testApp(
         value: MemorySourceDocumentRepository(),
       ),
       ChangeNotifierProvider(
-        create: (_) =>
-            QuizGenerationProvider(gateway: FakeQuizGenerationGateway()),
+        create: (_) => QuizGenerationProvider(
+          gateway: quizGenerationGateway ?? FakeQuizGenerationGateway(),
+        ),
       ),
       ChangeNotifierProvider.value(value: provider),
       ChangeNotifierProvider.value(value: savedProvider),
@@ -405,6 +409,41 @@ void main() {
       find.text('Question 1: comment Marie voyage-t-elle ?'),
       findsOneWidget,
     );
+  });
+
+  testWidgets('Interrupted generation offers result recovery', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      _testApp(
+        QuizProvider(),
+        const UploadContentScreen(),
+        quizGenerationGateway: FakeQuizGenerationGateway(
+          error: const QuizGenerationException(
+            'response_interrupted',
+            'The response was interrupted. Tap Recover Result.',
+          ),
+        ),
+      ),
+    );
+    final sourceText = List.filled(
+      12,
+      'Marie prend le train chaque matin pour aller à son travail.',
+    ).join(' ');
+    await tester.enterText(find.byType(TextField), sourceText);
+    await tester.ensureVisible(find.text('Preview & Generate'));
+    await tester.tap(find.text('Preview & Generate'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Generate Quiz'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Recover Result'), findsOneWidget);
+    expect(find.textContaining('response was interrupted'), findsOneWidget);
   });
 
   testWidgets('Selected PDF reaches the source preview with safe metadata', (

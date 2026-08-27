@@ -98,6 +98,8 @@ Exit criteria: pasted French text produces an editable ten-question MCQ quiz; th
 - [x] Validate the structured quiz response and save PDF metadata, questions, explanations, concepts, and attempts through the existing local learning core.
 - [x] Manually accept a real PDF-to-quiz OpenAI request on the emulator: generate ten questions, save the quiz, and complete the attempt. The first response was interrupted by an emulator network switch and is tracked as `QM-004`; one retry completed the journey.
 - [x] Confirm the generated PDF quiz and completed attempt survive closing the app, clearing recent apps, and reopening quizMoi.
+- [x] Implement `QM-004` response recovery with a stable client request ID, temporary backend result retention, duplicate-provider-call prevention, accurate recovery language, and focused automated tests.
+- [x] Manually verify `QM-004` on the emulator: interrupt one live PDF generation response, preserve the selected source, restore connectivity, and recover the generated quiz through the retained request (completed 2026-08-27). The full-network outage correctly used **Retry** while offline; focused widget coverage verifies **Recover Result** when the backend health probe succeeds.
 - [ ] Add on-demand Android camera permission, capture/retake, image preview, size/orientation checks, and explicit confirmation before upload.
 - [ ] Send a confirmed study image through FastAPI as OpenAI image input and reuse the same structured ten-question generation, save, testing, feedback, and persistence flow.
 - Add backend web-article retrieval, sanitization, and unsupported/paywalled-page handling.
@@ -174,8 +176,7 @@ Exit criteria: text, PDF, camera image, and supported URL sources work; MCQ and 
 
 ## Immediate backlog
 
-1. Prevent a completed AI result from being lost or charged twice after a client connection interruption (`QM-004`).
-2. Add supported web-article ingestion through the backend.
-3. Add the planned camera-image source journey without implementing it as part of the current PDF checkpoint.
-4. Add typed-answer questions and deterministic normalization/scoring.
-5. Add the remaining session controls, generation settings, weak-concept mastery, and daily review queue.
+1. Add supported web-article ingestion through the backend.
+2. Add the planned camera-image source journey.
+3. Add typed-answer questions and deterministic normalization/scoring.
+4. Add the remaining session controls, generation settings, weak-concept mastery, and daily review queue.

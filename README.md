@@ -16,7 +16,7 @@ The repository currently contains a persistent local learning core with:
 - a Python FastAPI generation backend with a versioned structured contract;
 - Android, iOS, web, and Windows platform scaffolding.
 
-The remaining offline demo quiz is explicitly separate from generated and saved learning data. Phase 4's direct-PDF checkpoint has passed a real OpenAI emulator test through generation, local save, quiz completion, and app-restart persistence. Camera-captured study images are now explicitly planned as a later Phase 4 source journey but are not implemented yet. Web-article and typed-answer breadth also remains scheduled; interrupted-response recovery is tracked in [DEFECT_LOG.md](DEFECT_LOG.md). See [DEVELOPMENT_ROADMAP.md](DEVELOPMENT_ROADMAP.md).
+The remaining offline demo quiz is explicitly separate from generated and saved learning data. Phase 4's direct-PDF checkpoint has passed real OpenAI emulator tests through generation, interrupted-response recovery, local save, quiz completion, and app-restart persistence. Generation requests carry a stable recovery ID so an interrupted response can retrieve the retained local-backend operation instead of creating another provider call. Camera-captured study images are planned as a later Phase 4 source journey but are not implemented yet. Web-article and typed-answer breadth also remains scheduled. See [DEFECT_LOG.md](DEFECT_LOG.md) and [DEVELOPMENT_ROADMAP.md](DEVELOPMENT_ROADMAP.md).
 
 The intended learner experience and current demo boundaries are defined in [PRODUCT_SPEC.md](PRODUCT_SPEC.md).
 Issues found during emulator and self-use testing are tracked in [DEFECT_LOG.md](DEFECT_LOG.md).
@@ -140,6 +140,8 @@ While `flutter run` is active:
 ## Run the local quiz-generation backend
 
 The Android app never contains the OpenAI key. It calls a FastAPI service running on this computer, and the backend keeps the key in an environment variable. Pasted text uses `/v1/quizzes/generate`; confirmed PDFs use multipart upload to `/v1/quizzes/generate-pdf`, where the backend includes the PDF directly in an OpenAI Responses API request.
+
+Flutter assigns each generation one request ID and preserves it when recovering an interrupted response. FastAPI retains the in-progress or completed result in memory for up to one hour, allowing **Recover Result** to retrieve it without a second OpenAI call. Restarting FastAPI clears this temporary prototype cache.
 
 Install Python 3.11 or 3.12, then create the ignored local environment:
 

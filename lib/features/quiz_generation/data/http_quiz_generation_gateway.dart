@@ -35,7 +35,7 @@ class HttpQuizGenerationGateway implements QuizGenerationGateway {
       if (response.statusCode < 200 || response.statusCode >= 300) {
         throw _errorFromResponse(response.statusCode, body);
       }
-      return _parseDraft(body);
+      return _parseDraft(body, expectedRequestId: request.requestId);
     } on QuizGenerationException {
       rethrow;
     } on TimeoutException {
@@ -44,10 +44,7 @@ class HttpQuizGenerationGateway implements QuizGenerationGateway {
         'Quiz generation took too long. Your text is still here, so you can retry.',
       );
     } on http.ClientException {
-      throw const QuizGenerationException(
-        'backend_unavailable',
-        'The local quiz server is not reachable. Start it on your computer, then retry.',
-      );
+      throw await _classifyConnectionFailure();
     } on FormatException {
       throw const QuizGenerationException(
         'invalid_generation',
@@ -68,6 +65,7 @@ class HttpQuizGenerationGateway implements QuizGenerationGateway {
             )
             ..fields.addAll({
               'schemaVersion': request.schemaVersion.toString(),
+              'requestId': request.requestId,
               'sourceTitle': request.sourceTitle,
               'cefrLevel': request.cefrLevel,
               'difficulty': request.difficulty,
@@ -87,7 +85,7 @@ class HttpQuizGenerationGateway implements QuizGenerationGateway {
       if (response.statusCode < 200 || response.statusCode >= 300) {
         throw _errorFromResponse(response.statusCode, body);
       }
-      return _parseDraft(body);
+      return _parseDraft(body, expectedRequestId: request.requestId);
     } on QuizGenerationException {
       rethrow;
     } on TimeoutException {
@@ -96,10 +94,7 @@ class HttpQuizGenerationGateway implements QuizGenerationGateway {
         'PDF quiz generation took too long. Your selected file is still available, so you can retry.',
       );
     } on http.ClientException {
-      throw const QuizGenerationException(
-        'backend_unavailable',
-        'The local quiz server is not reachable. Start it on your computer, then retry.',
-      );
+      throw await _classifyConnectionFailure();
     } on FormatException {
       throw const QuizGenerationException(
         'invalid_generation',
@@ -134,8 +129,33 @@ class HttpQuizGenerationGateway implements QuizGenerationGateway {
     );
   }
 
-  GeneratedQuizDraft _parseDraft(Map<String, Object?> json) {
-    if (json['schemaVersion'] != 1 || json['requestId'] is! String) {
+  Future<QuizGenerationException> _classifyConnectionFailure() async {
+    try {
+      final health = await _client
+          .get(baseUri.resolve('/health'))
+          .timeout(const Duration(seconds: 3));
+      if (health.statusCode >= 200 && health.statusCode < 300) {
+        return const QuizGenerationException(
+          'response_interrupted',
+          'The server is running, but quizMoi did not receive the completed response. Tap Recover Result to reuse this request without generating a second quiz.',
+        );
+      }
+    } catch (_) {
+      // The health request is only used to improve the recovery message.
+    }
+    return const QuizGenerationException(
+      'backend_unavailable',
+      'The local quiz server is not reachable. Start it on your computer, then retry.',
+    );
+  }
+
+  GeneratedQuizDraft _parseDraft(
+    Map<String, Object?> json, {
+    required String expectedRequestId,
+  }) {
+    if (json['schemaVersion'] != 1 ||
+        json['requestId'] is! String ||
+        json['requestId'] != expectedRequestId) {
       throw const FormatException('Unsupported response version.');
     }
     final title = _requiredString(json, 'title');

@@ -740,7 +740,12 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
                                     onPressed: generation.isGenerating
                                         ? null
                                         : _generateAndReview,
-                                    child: const Text('Retry'),
+                                    child: Text(
+                                      generation.errorCode ==
+                                              'response_interrupted'
+                                          ? 'Recover Result'
+                                          : 'Retry',
+                                    ),
                                   ),
                               ],
                             ),
