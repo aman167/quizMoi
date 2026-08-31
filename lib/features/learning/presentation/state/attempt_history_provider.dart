@@ -98,11 +98,30 @@ class AttemptHistoryProvider extends ChangeNotifier {
       _entries.fold(0, (total, entry) => total + entry.totalQuestions);
   double get accuracyPercent =>
       totalQuestions == 0 ? 0 : (totalCorrectAnswers / totalQuestions) * 100;
-  int get questionsCompletedToday {
+  List<AttemptHistoryEntry> get entriesCompletedToday {
     final today = _now().toLocal();
     return _entries
         .where((entry) => _isSameDay(entry.completedAt.toLocal(), today))
-        .fold(0, (total, entry) => total + entry.totalQuestions);
+        .toList(growable: false);
+  }
+
+  List<AttemptHistoryEntry> get visibleRecentEntries {
+    final includedIds = entriesCompletedToday
+        .map((entry) => entry.attempt.id)
+        .toSet();
+    final visible = <AttemptHistoryEntry>[...entriesCompletedToday];
+    for (final entry in _entries) {
+      if (visible.length >= 5 && includedIds.isNotEmpty) break;
+      if (includedIds.add(entry.attempt.id)) visible.add(entry);
+    }
+    return List.unmodifiable(visible);
+  }
+
+  int get questionsCompletedToday {
+    return entriesCompletedToday.fold(
+      0,
+      (total, entry) => total + entry.totalQuestions,
+    );
   }
 
   int get currentStreakDays {

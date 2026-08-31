@@ -67,6 +67,46 @@ void main() {
     expect(provider.accuracyPercent, 0);
   });
 
+  test(
+    'counts every retry today and exposes every contributing attempt',
+    () async {
+      final now = DateTime(2026, 8, 17, 15);
+      final quiz = _quiz('quiz-1', 'Travel French', now, 2);
+      final attempts =
+          List.generate(
+            6,
+            (index) => _attempt(
+              id: 'today-$index',
+              status: AttemptStatus.completed,
+              completedAt: now.subtract(Duration(minutes: index)),
+              answers: const {'question-1': 'a', 'question-2': 'b'},
+            ),
+          )..add(
+            _attempt(
+              id: 'yesterday',
+              status: AttemptStatus.completed,
+              completedAt: DateTime(2026, 8, 16, 20),
+              answers: const {'question-1': 'a', 'question-2': 'b'},
+            ),
+          );
+      final provider = AttemptHistoryProvider(
+        attemptRepository: MemoryAttemptRepository(initialAttempts: attempts),
+        quizRepository: MemoryQuizRepository(initialQuizzes: [quiz]),
+        now: () => now,
+      );
+
+      await provider.load();
+
+      expect(provider.questionsCompletedToday, 12);
+      expect(provider.entriesCompletedToday, hasLength(6));
+      expect(provider.visibleRecentEntries, hasLength(6));
+      expect(
+        provider.visibleRecentEntries.map((entry) => entry.attempt.id),
+        isNot(contains('yesterday')),
+      );
+    },
+  );
+
   test('calculates a consecutive streak ending yesterday', () async {
     final now = DateTime(2026, 8, 17, 15);
     final provider = AttemptHistoryProvider(

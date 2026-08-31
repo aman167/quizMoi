@@ -50,6 +50,19 @@ class _FakePdfSourcePicker implements PdfSourcePicker {
   }
 }
 
+class _FailOnceQuizRepository extends MemoryQuizRepository {
+  bool _shouldFail = true;
+
+  @override
+  Future<void> save(QuizDefinition quiz) async {
+    if (_shouldFail) {
+      _shouldFail = false;
+      throw StateError('Simulated local save failure.');
+    }
+    await super.save(quiz);
+  }
+}
+
 Widget _testApp(
   QuizProvider provider,
   Widget home, {
@@ -378,7 +391,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Pasted text reaches generated review, save, and quiz launch', (
+  testWidgets('Pasted text saves and launches without revealing answers', (
     WidgetTester tester,
   ) async {
     tester.view.physicalSize = const Size(800, 1400);
@@ -387,7 +400,15 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
 
     final provider = QuizProvider();
-    await tester.pumpWidget(_testApp(provider, const UploadContentScreen()));
+    final savedProvider = SavedQuizProvider(MemoryQuizRepository());
+    await savedProvider.load();
+    await tester.pumpWidget(
+      _testApp(
+        provider,
+        const UploadContentScreen(),
+        savedQuizProvider: savedProvider,
+      ),
+    );
     final sourceText = List.filled(
       12,
       'Marie prend le train chaque matin pour aller à son travail.',
@@ -405,14 +426,11 @@ void main() {
     await tester.tap(find.text('Generate Quiz'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Review Generated Quiz'), findsOneWidget);
-    expect(find.text('Question 1'), findsOneWidget);
-    expect(find.text('Regenerate All Questions'), findsOneWidget);
-    await tester.tap(find.text('Save Quiz'));
-    await tester.pumpAndSettle();
-
     expect(provider.currentQuiz, isNotNull);
     expect(provider.currentQuiz!.title, 'Le trajet de Marie');
+    expect(savedProvider.quizzes, hasLength(1));
+    expect(find.text('Review Generated Quiz'), findsNothing);
+    expect(find.text('Regenerate All Questions'), findsNothing);
     expect(
       find.text('Question 1: comment Marie voyage-t-elle ?'),
       findsOneWidget,
@@ -457,7 +475,50 @@ void main() {
     expect(find.textContaining('response was interrupted'), findsOneWidget);
   });
 
-  testWidgets('Web article reaches cleaned preview and generated review', (
+  testWidgets('Generated quiz save can retry without another AI request', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final gateway = FakeQuizGenerationGateway();
+    final provider = QuizProvider();
+    final savedProvider = SavedQuizProvider(_FailOnceQuizRepository());
+    await savedProvider.load();
+    await tester.pumpWidget(
+      _testApp(
+        provider,
+        const UploadContentScreen(),
+        savedQuizProvider: savedProvider,
+        quizGenerationGateway: gateway,
+      ),
+    );
+    final sourceText = List.filled(
+      12,
+      'Marie prend le train chaque matin pour aller à son travail.',
+    ).join(' ');
+    await tester.enterText(
+      find.byKey(const ValueKey('studyTextField')),
+      sourceText,
+    );
+    await tester.ensureVisible(find.text('Preview & Generate'));
+    await tester.tap(find.text('Preview & Generate'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Generate Quiz'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('quiz could not be saved'), findsOneWidget);
+    expect(gateway.callCount, 1);
+    await tester.tap(find.text('Retry'));
+    await tester.pumpAndSettle();
+
+    expect(gateway.callCount, 1);
+    expect(savedProvider.quizzes, hasLength(1));
+    expect(provider.currentQuiz?.title, 'Le trajet de Marie');
+  });
+
+  testWidgets('Web article preview generates, saves, and starts directly', (
     WidgetTester tester,
   ) async {
     tester.view.physicalSize = const Size(800, 1400);
@@ -490,8 +551,33 @@ void main() {
     await tester.tap(find.text('Generate Quiz'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Review Generated Quiz'), findsOneWidget);
-    expect(find.text('Question 1'), findsOneWidget);
+    expect(find.text('Review Generated Quiz'), findsNothing);
+    expect(
+      find.text('Question 1: comment Marie voyage-t-elle ?'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('Offline demo is saved before it starts', (tester) async {
+    final provider = QuizProvider();
+    final savedProvider = SavedQuizProvider(MemoryQuizRepository());
+    await savedProvider.load();
+    await tester.pumpWidget(
+      _testApp(
+        provider,
+        const UploadContentScreen(),
+        savedQuizProvider: savedProvider,
+      ),
+    );
+
+    await tester.ensureVisible(find.text('Try Offline Demo Quiz'));
+    await tester.tap(find.text('Try Offline Demo Quiz'));
+    await tester.pumpAndSettle();
+
+    expect(savedProvider.quizzes, hasLength(1));
+    expect(savedProvider.quizzes.single.id, offlineDemoQuizId);
+    expect(provider.savedQuizDefinition?.id, offlineDemoQuizId);
+    expect(find.text('Offline French Practice'), findsOneWidget);
   });
 
   testWidgets('Selected PDF reaches the source preview with safe metadata', (

@@ -46,7 +46,8 @@ class QuizGenerationProvider extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   bool get isGenerating => _state == QuizGenerationState.generating;
   bool get isFetchingSource => _state == QuizGenerationState.fetchingSource;
-  bool get isBusy => isGenerating || isFetchingSource;
+  bool get isBusy =>
+      isGenerating || isFetchingSource || _state == QuizGenerationState.saving;
   bool get canRetry =>
       (_request != null || _pdfRequest != null || _imageRequest != null) &&
       _state == QuizGenerationState.failure;
@@ -426,6 +427,13 @@ class QuizGenerationProvider extends ChangeNotifier {
   void markSaved() {
     _state = QuizGenerationState.success;
     notifyListeners();
+  }
+
+  void markSaveFailed() {
+    _fail(
+      'save_failed',
+      'The generated quiz could not be saved. Your quiz is still available.',
+    );
   }
 
   void reset() {

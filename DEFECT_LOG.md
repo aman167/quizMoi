@@ -14,7 +14,7 @@ This log records issues found during emulator and self-use testing. Entries stay
 
 ## QM-001 — Offline demo is absent from Recent Attempts
 
-- **Status:** Open
+- **Status:** Closed 2026-08-27
 - **Priority:** Medium
 - **Found:** 2026-08-17, Android 17 emulator
 - **Target:** Phase 5 self-use alpha, before relying on dashboard metrics
@@ -23,11 +23,13 @@ This log records issues found during emulator and self-use testing. Entries stay
 - **Reproduction:** Open **Add Content**, select **Try Offline Demo Quiz**, complete and submit all ten questions, return to the dashboard, and compare accuracy with **Recent Attempts**.
 - **Initial cause:** `QuizProvider.startQuiz()` creates a transient UI quiz. It does not create a saved `QuizDefinition`, so `persistSession()` exits without saving an attempt. `AttemptHistoryProvider` can only display attempts linked to quizzes in `QuizRepository`.
 - **Investigation note:** Dashboard accuracy is calculated from persisted history, not directly from the transient demo score. The reported accuracy change should be reproduced while recording the before/after value to determine whether history loaded asynchronously or another stored attempt changed it.
+- **Implemented:** The offline demo now has a stable saved `QuizDefinition`. The app saves it before starting, and its completed attempts use the same persistence, scoring, history, and dashboard pipeline as every other quiz.
+- **Verification:** Widget coverage proves the demo is saved before launch. On the Android emulator, the installed build completed **Offline French Practice** and displayed its 10% attempt in **Recent Attempts** after returning to the dashboard.
 - **Acceptance:** Demo behavior and labels are consistent; its completion either appears everywhere or affects no persistent metric; automated coverage verifies the chosen rule.
 
 ## QM-002 — Daily goal shows 24/10 after one visible quiz
 
-- **Status:** Investigating
+- **Status:** Closed 2026-08-27
 - **Priority:** High
 - **Found:** 2026-08-17, Android 17 emulator
 - **Target:** Phase 5 self-use alpha, before relying on dashboard metrics
@@ -37,11 +39,14 @@ This log records issues found during emulator and self-use testing. Entries stay
 - **Initial cause:** `questionsCompletedToday` sums the full question count of every persisted completed attempt whose completion timestamp matches the emulator's local day. App rebuilds preserve SQLite data, and retaking a quiz counts its questions again. The offline demo itself is not persisted and therefore cannot directly add ten questions.
 - **Evidence:** The emulator clock and the existing `quiz_moi.sqlite` database are both dated 2026-08-17. The database was deliberately preserved for later inspection.
 - **Questions to resolve:** Identify the attempts contributing 24 questions; decide whether retries count toward the daily goal; make the dashboard total and visible history use the same eligibility rules; decide whether progress text should cap at the goal or show overachievement separately.
+- **Product rule:** Every completed attempt counts as learning activity, including a retake. The progress bar caps visually at the goal, while the numeric total preserves overachievement. Every attempt contributing to today's total remains visible in **Recent Attempts**.
+- **Implemented:** The history provider exposes today's contributing attempts and keeps all of them visible even when there are more than five. The dashboard explains questions beyond the goal instead of presenting an unexplained total.
+- **Verification:** Automated tests cover multiple attempts, retakes, deleted quizzes, previous-day attempts, and totals above the goal. On the emulator, completing the saved ten-question offline demo changed the existing total from 20 to 30, displayed **10 extra questions**, and showed the exact demo attempt in history.
 - **Acceptance:** The displayed total can be reconciled to visible qualifying attempts, the product rule for retries is documented, and automated tests cover multiple quizzes, retries, deleted quizzes, day boundaries, and values above the goal.
 
 ## QM-003 — Generated-quiz review reveals answers before testing
 
-- **Status:** Open
+- **Status:** Closed 2026-08-31
 - **Priority:** High
 - **Found:** 2026-08-17, real Phase 3 OpenAI integration test
 - **Target:** Phase 3 UX follow-up or Phase 5 self-use alpha, before regular learning use
@@ -51,6 +56,9 @@ This log records issues found during emulator and self-use testing. Entries stay
 - **Editing alternative:** Preserve **Review/Edit Quiz** as an optional advanced action from the generated confirmation, saved-quiz menu, or post-attempt results. If pre-attempt review remains available, clearly warn that it reveals answers and treat it as authoring mode rather than the normal learner flow.
 - **Tradeoff:** Removing mandatory review reduces answer leakage and friction, but it also removes the learner’s manual quality gate for ambiguous or factually weak AI questions. Structural and grounding validation already blocks malformed output, but it cannot guarantee that every question is pedagogically strong. The final design should combine immediate play with an easy **Report/Edit Question** action.
 - **Decisions needed:** Choose the default knowledge-base assignment, generated title behavior, save-failure recovery, whether to offer **Start Now** versus **Review First**, and where post-generation editing lives.
+- **Implemented:** The default flow is now source preview → generation → local source/quiz save → immediate quiz start. The answer-filled editor is no longer opened in the normal learner journey. Generated quizzes remain unfiled by default, retain their generated title, and can still be edited later from the saved-quiz library. A failed local save preserves the generated draft and retries saving without making another AI request.
+- **Automated evidence:** Widget tests prove pasted text and web articles save and launch directly without rendering **Review Generated Quiz**, and prove a simulated save failure retries successfully with one AI gateway call. The complete Flutter suite passes.
+- **Manual verification:** On 2026-08-31, a clean Android emulator installation generated a real ten-question quiz through the configured FastAPI/OpenAI backend. The app saved the generated source and quiz automatically and opened **Question 1 of 10** directly. It did not display **Review Generated Quiz**, correct answers, explanations, source excerpts, or a separate save button before testing.
 - **Acceptance:** The normal generation path starts a persisted quiz without revealing answers; saving remains reliable and retryable; optional editing is still discoverable; explanations appear after submission; widget tests and an emulator check cover both the default and optional paths.
 
 ## QM-004 — Successful AI response can be lost after a connection interruption

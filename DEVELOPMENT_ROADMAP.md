@@ -184,6 +184,5 @@ Exit criteria: text, PDF, camera image, and supported URL sources work; MCQ and 
 
 ## Immediate backlog
 
-1. Resolve or explicitly defer the remaining logged self-use defects before Phase 5 metrics are trusted.
-2. Begin Phase 5 daily self-use on the emulator and the owner's physical Android phone.
-3. Record crashes, data loss, confusing feedback, and low-quality generated questions during normal use.
+1. Begin Phase 5 daily self-use on the emulator and the owner's physical Android phone.
+2. Record crashes, data loss, confusing feedback, and low-quality generated questions during normal use.
