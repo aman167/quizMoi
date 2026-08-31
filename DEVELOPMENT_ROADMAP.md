@@ -9,7 +9,7 @@ Last restructured: 2026-08-17
 - [x] Phase 2 — Build the real local learning core (completed 2026-08-17)
 - [x] Phase 3 — Complete the AI learning prototype (completed 2026-08-17)
 - [x] Phase 4 — Complete the Version 1 feature breadth (completed 2026-08-27)
-- [ ] Phase 5 — Self-use alpha
+- [ ] Phase 5 — Self-use alpha (active since 2026-08-31)
 - [ ] Phase 6 — Hosted private beta
 - [ ] Phase 7 — Reliability and polish
 - [ ] Phase 8 — Conditional accounts and public-release decision
@@ -131,6 +131,7 @@ Exit criteria: text, PDF, camera image, and supported URL sources work; MCQ and 
 
 ## Phase 5 — Self-use alpha
 
+- Follow the repeatable [Phase 5 alpha plan](PHASE_5_ALPHA_PLAN.md).
 - Use the app on the emulator and owner’s Android phone with the backend running locally.
 - Maintain the repository's [defect and improvement log](DEFECT_LOG.md).
 - Fix crashes, data loss, broken navigation, misleading results, and unusable AI output immediately.

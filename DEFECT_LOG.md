@@ -12,6 +12,26 @@ This log records issues found during emulator and self-use testing. Entries stay
 - **Medium:** important workflow problem that has a workaround.
 - **Low:** cosmetic or uncommon edge case.
 
+## New finding template
+
+Copy this block when Phase 5 reveals a defect or improvement:
+
+```text
+## QM-___ — Short title
+
+- Status: Open
+- Priority: Critical / High / Medium / Low / Improvement
+- Found: YYYY-MM-DD, device and Android version
+- Commit: Git commit tested
+- Journey: Text / PDF / URL / Camera / Demo / Quiz / Dashboard / Settings
+- Observed: What happened
+- Expected: What should happen
+- Reproduction: Exact repeatable steps
+- Evidence: Non-sensitive screenshot, log, or data observation
+- Workaround: None or safe temporary workaround
+- Acceptance: What must be true before closing
+```
+
 ## QM-001 — Offline demo is absent from Recent Attempts
 
 - **Status:** Closed 2026-08-27
