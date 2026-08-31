@@ -110,3 +110,19 @@ Copy this block when Phase 5 reveals a defect or improvement:
 - **Verification:** A real ten-question Android generation confirmed that correct answers were not concentrated in one visible position.
 - **Manual evidence:** The camera/OpenAI Android acceptance quiz generated and persisted ten MCQs. Their visible correct-option positions were `[B, D, D, D, B, B, B, B, D, D]`, confirming that the answers were no longer all in option A while stable IDs and scoring remained valid.
 - **Acceptance:** Generated MCQ sets randomize option order safely, preserve answer/explanation correctness, avoid obvious position bias across a reviewed evaluation set, and pass unit plus emulator tests.
+
+## QM-006 — Pause and restart controls are clipped on a narrow phone
+
+- **Status:** Closed 2026-08-31
+- **Priority:** High
+- **Found:** 2026-08-31, Android 17 Pixel emulator
+- **Commit:** `39ad237`
+- **Journey:** Mixed PDF quiz session controls
+- **Observed:** The quiz header showed **Back to Dashboard**, level/XP, and elapsed time, but the pause and restart icon buttons were outside the visible width. **Back to Dashboard** actually offered to clear the current session, which could be mistaken for a safe pause action.
+- **Expected:** A clearly labelled pause/save action must remain visible on narrow phones. Destructive discard and restart actions must be discoverable but visually separate and explicitly confirmed.
+- **Reproduction:** Start a 15-question quiz on the Pixel emulator and inspect the top row at Question 3.
+- **Evidence:** Phase 5 screenshot shows the header ending at the timer with no pause or restart controls.
+- **Workaround:** Application backgrounding persists the session, but the UI provides no clear in-app pause control.
+- **Implemented:** Replaced the overflowing header with a responsive row. Normal phones show **Pause & Exit**; very narrow layouts show **Pause**. A visible quiz-actions menu contains separately confirmed **Restart Quiz** and **Discard Attempt** actions. Level/XP decoration was removed from the active session header to prioritize learning controls.
+- **Verification:** Narrow widget coverage catches overflow and verifies the pause/action controls. The updated APK was installed over the active build without clearing data; the 15-question PDF attempt survived, resumed at Question 3 with 1 of 15 answered, displayed **Pause & Exit**, and safely returned to a resumable dashboard card.
+- **Acceptance:** A narrow-phone layout always displays **Pause & Exit** and a quiz-actions menu; pause returns to the dashboard without losing progress; restart/discard remain confirmed; widget and emulator tests pass.

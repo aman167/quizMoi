@@ -196,164 +196,86 @@ class _ActiveTestingScreenState extends State<ActiveTestingScreen>
               child: Column(
                 children: [
                   // Top Navigation Bar
-                  Container(
+                  Padding(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16,
                       vertical: 12,
                     ),
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          InkWell(
-                            onTap: () => _exitQuiz(provider),
-                            borderRadius: BorderRadius.circular(20),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 6,
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final isVeryNarrow = constraints.maxWidth < 360;
+                        return Row(
+                          children: [
+                            OutlinedButton.icon(
+                              onPressed: () => _pauseQuiz(provider),
+                              icon: const Icon(Icons.pause, size: 17),
+                              label: Text(
+                                isVeryNarrow ? 'Pause' : 'Pause & Exit',
                               ),
-                              decoration: BoxDecoration(
-                                color: AppColors.surfaceContainerLow,
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
-                                  color: AppColors.outlineVariant,
+                              style: OutlinedButton.styleFrom(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: isVeryNarrow ? 10 : 14,
                                 ),
                               ),
+                            ),
+                            const Spacer(),
+                            Semantics(
+                              label: provider.remainingSeconds == null
+                                  ? 'Elapsed time ${provider.formattedTime}'
+                                  : '${provider.remainingSeconds!} seconds left',
                               child: Row(
-                                children: const [
-                                  Icon(
-                                    Icons.arrow_back,
+                                children: [
+                                  const Icon(
+                                    Icons.timer,
                                     size: 16,
                                     color: AppColors.onSurfaceVariant,
                                   ),
-                                  SizedBox(width: 4),
-                                  Text(
-                                    'Back to Dashboard',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                      color: AppColors.onSurfaceVariant,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-
-                          // Stats & Timer Badge
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppColors.surfaceContainerLow,
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(
-                                    color: AppColors.outlineVariant,
-                                  ),
-                                ),
-                                child: Row(
-                                  children: [
-                                    const Icon(
-                                      Icons.emoji_events,
-                                      size: 14,
-                                      color: Colors.amber,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    const Text(
-                                      'Level B1',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    Container(
-                                      margin: const EdgeInsets.symmetric(
-                                        horizontal: 6,
-                                      ),
-                                      width: 1,
-                                      height: 12,
-                                      color: AppColors.outlineVariant,
-                                    ),
-                                    const Icon(
-                                      Icons.star,
-                                      size: 14,
-                                      color: Colors.blue,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    const Text(
-                                      '1,240 XP',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-
-                              // Timer Badge
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppColors.surfaceContainerLow,
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(
-                                    color: AppColors.outlineVariant,
-                                  ),
-                                ),
-                                child: Row(
-                                  children: [
-                                    const Icon(
-                                      Icons.timer,
-                                      size: 14,
-                                      color: AppColors.onSurfaceVariant,
-                                    ),
+                                  if (!isVeryNarrow) ...[
                                     const SizedBox(width: 4),
                                     Text(
                                       provider.remainingSeconds == null
                                           ? provider.formattedTime
-                                          : '${provider.remainingSeconds! ~/ 60}m ${(provider.remainingSeconds! % 60).toString().padLeft(2, '0')}s left',
+                                          : '${provider.remainingSeconds! ~/ 60}m ${(provider.remainingSeconds! % 60).toString().padLeft(2, '0')}s',
                                       style: const TextStyle(
-                                        fontSize: 11,
+                                        fontSize: 12,
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
                                   ],
+                                ],
+                              ),
+                            ),
+                            PopupMenuButton<String>(
+                              tooltip: 'Quiz actions',
+                              onSelected: (action) {
+                                if (action == 'restart') {
+                                  _restartQuiz(provider);
+                                } else if (action == 'discard') {
+                                  _exitQuiz(provider);
+                                }
+                              },
+                              itemBuilder: (context) => const [
+                                PopupMenuItem(
+                                  value: 'restart',
+                                  child: ListTile(
+                                    leading: Icon(Icons.refresh),
+                                    title: Text('Restart Quiz'),
+                                    contentPadding: EdgeInsets.zero,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(width: 6),
-
-                              // Restart Pill
-                              IconButton(
-                                icon: const Icon(Icons.pause, size: 18),
-                                onPressed: () => _pauseQuiz(provider),
-                                tooltip: 'Pause Quiz',
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(),
-                              ),
-                              const SizedBox(width: 10),
-                              IconButton(
-                                icon: const Icon(Icons.refresh, size: 18),
-                                onPressed: () => _restartQuiz(provider),
-                                tooltip: 'Restart Quiz',
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
+                                PopupMenuItem(
+                                  value: 'discard',
+                                  child: ListTile(
+                                    leading: Icon(Icons.delete_outline),
+                                    title: Text('Discard Attempt'),
+                                    contentPadding: EdgeInsets.zero,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        );
+                      },
                     ),
                   ),
 
