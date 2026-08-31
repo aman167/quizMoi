@@ -46,7 +46,7 @@ This log records issues found during emulator and self-use testing. Entries stay
 
 ## QM-003 — Generated-quiz review reveals answers before testing
 
-- **Status:** Ready to verify
+- **Status:** Closed 2026-08-31
 - **Priority:** High
 - **Found:** 2026-08-17, real Phase 3 OpenAI integration test
 - **Target:** Phase 3 UX follow-up or Phase 5 self-use alpha, before regular learning use
@@ -58,7 +58,7 @@ This log records issues found during emulator and self-use testing. Entries stay
 - **Decisions needed:** Choose the default knowledge-base assignment, generated title behavior, save-failure recovery, whether to offer **Start Now** versus **Review First**, and where post-generation editing lives.
 - **Implemented:** The default flow is now source preview → generation → local source/quiz save → immediate quiz start. The answer-filled editor is no longer opened in the normal learner journey. Generated quizzes remain unfiled by default, retain their generated title, and can still be edited later from the saved-quiz library. A failed local save preserves the generated draft and retries saving without making another AI request.
 - **Automated evidence:** Widget tests prove pasted text and web articles save and launch directly without rendering **Review Generated Quiz**, and prove a simulated save failure retries successfully with one AI gateway call. The complete Flutter suite passes.
-- **Remaining verification:** Run one real generation on the installed Android build while FastAPI is configured, and confirm Question 1 opens immediately without displaying correct answers or explanations first.
+- **Manual verification:** On 2026-08-31, a clean Android emulator installation generated a real ten-question quiz through the configured FastAPI/OpenAI backend. The app saved the generated source and quiz automatically and opened **Question 1 of 10** directly. It did not display **Review Generated Quiz**, correct answers, explanations, source excerpts, or a separate save button before testing.
 - **Acceptance:** The normal generation path starts a persisted quiz without revealing answers; saving remains reliable and retryable; optional editing is still discoverable; explanations appear after submission; widget tests and an emulator check cover both the default and optional paths.
 
 ## QM-004 — Successful AI response can be lost after a connection interruption
