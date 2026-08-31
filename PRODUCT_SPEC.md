@@ -1,13 +1,13 @@
 # quizMoi Version 1 Product Specification
 
 Status: Build-first private development
-Last updated: 2026-08-17
+Last updated: 2026-08-27
 
 ## Product promise
 
 quizMoi helps a French learner turn their own study material into active-recall practice, understand mistakes, and return to weak concepts without manually creating every question.
 
-Version 1 succeeds when one learner can import material, review an automatically generated quiz, complete it, understand grounded results, and later resume review without losing work.
+Version 1 succeeds when one learner can import material, start an automatically generated quiz without seeing its answers, complete it, understand grounded results, and later resume review without losing work.
 
 ## Primary learner
 
@@ -32,7 +32,7 @@ No Version 1 feature is removed by this ordering.
 3. Preview and confirm pasted/URL text, PDF metadata, or the captured image before the material leaves the device.
 4. Choose difficulty, question types, and count.
 5. Generate validated questions through a quizMoi-controlled backend.
-6. Edit, remove, reorder, or regenerate questions before saving.
+6. Save and start immediately without exposing answers; optional authoring tools remain available from the saved-quiz library.
 7. Complete a persistent quiz session with clear navigation safeguards.
 8. See deterministic scoring, grounded explanations, and concepts to review.
 9. Return later to saved history and a personalized review queue.
@@ -44,9 +44,9 @@ No Version 1 feature is removed by this ordering.
 - Required preview and confirmation before generation.
 - Four unique options and exactly one valid correct answer per question.
 - Explanation, source excerpt, and concept tags required for every generated question.
-- Generated quiz must be reviewed before local save.
+- Generated quizzes save and start by default without showing correct answers or explanations; editing remains an optional authoring action.
 - Source, quiz, session, attempt, and feedback survive restart.
-- **Try Demo Quiz** remains a clearly separate offline sample.
+- **Try Offline Demo Quiz** is a saved local practice quiz, so its completed attempts appear consistently in history and metrics.
 - Entered text remains available after recoverable failures and can be retried.
 
 ## Phase 4 scoring and mastery rules
@@ -88,6 +88,7 @@ No Version 1 feature is removed by this ordering.
 - Question-level explanation and source evidence
 - Weak concepts and actionable recommendations
 - Attempt history, saved results, mastery, and daily review queue
+- Every completed attempt, including a retake, counts toward the daily question goal; all attempts contributing to today's total remain visible in Recent Attempts.
 
 ### Learner data
 

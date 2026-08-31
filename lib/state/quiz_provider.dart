@@ -7,6 +7,151 @@ import '../features/learning/domain/entities/learning_entities.dart'
 import '../features/learning/domain/repositories/attempt_repository.dart';
 import '../features/learning/domain/repositories/quiz_repository.dart';
 
+const offlineDemoQuizId = 'offline-demo-quiz-v1';
+
+learning.QuizDefinition buildOfflineDemoQuiz({DateTime? createdAt}) {
+  final timestamp = createdAt ?? DateTime.now();
+  final questions = _offlineDemoQuestions();
+  return learning.QuizDefinition(
+    id: offlineDemoQuizId,
+    title: 'Offline French Practice',
+    questions: questions.indexed.map((entry) {
+      final (index, question) = entry;
+      return learning.QuestionDefinition(
+        id: 'offline-demo-question-${index + 1}',
+        prompt: question.prompt,
+        type: learning.QuestionType.multipleChoice,
+        options: question.options
+            .map(
+              (option) =>
+                  learning.AnswerOption(id: option.id, text: option.text),
+            )
+            .toList(),
+        correctAnswer: question.correctOptionId,
+        explanation: const learning.QuestionExplanation(
+          text: 'This answer follows standard French vocabulary or grammar.',
+        ),
+      );
+    }).toList(),
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  );
+}
+
+List<QuizQuestion> _offlineDemoQuestions() => [
+  QuizQuestion(
+    number: 1,
+    prompt: 'Quel est le synonyme de "quotidien" ?',
+    options: [
+      QuizOption(id: 'a', text: 'Rare'),
+      QuizOption(id: 'b', text: 'Journalier'),
+      QuizOption(id: 'c', text: 'Ancien'),
+      QuizOption(id: 'd', text: 'Nouveau'),
+    ],
+    correctOptionId: 'b',
+  ),
+  QuizQuestion(
+    number: 2,
+    prompt: 'Comment dit-on "to remember" en français ?',
+    options: [
+      QuizOption(id: 'a', text: 'Oublier'),
+      QuizOption(id: 'b', text: 'Se souvenir'),
+      QuizOption(id: 'c', text: 'Perdre'),
+      QuizOption(id: 'd', text: 'Chercher'),
+    ],
+    correctOptionId: 'b',
+  ),
+  QuizQuestion(
+    number: 3,
+    prompt: 'Complétez : "Il fait ___ aujourd\'hui." (It\'s nice weather)',
+    options: [
+      QuizOption(id: 'a', text: 'froid'),
+      QuizOption(id: 'b', text: 'beau'),
+      QuizOption(id: 'c', text: 'nuit'),
+      QuizOption(id: 'd', text: 'mal'),
+    ],
+    correctOptionId: 'b',
+  ),
+  QuizQuestion(
+    number: 4,
+    prompt:
+        'Dans le contexte de l\'article sur le changement climatique, que signifie l\'expression "passer au crible" ?',
+    options: [
+      QuizOption(id: 'a', text: 'Ignorer complètement un problème.'),
+      QuizOption(id: 'b', text: 'Examiner minutieusement et en détail.'),
+      QuizOption(id: 'c', text: 'Transmettre une information rapidement.'),
+      QuizOption(id: 'd', text: 'Trier des déchets recyclables.'),
+    ],
+    correctOptionId: 'b',
+  ),
+  QuizQuestion(
+    number: 5,
+    prompt: 'Quel est le passé composé de "aller" avec "je" ?',
+    options: [
+      QuizOption(id: 'a', text: 'J\'ai allé'),
+      QuizOption(id: 'b', text: 'Je suis allé'),
+      QuizOption(id: 'c', text: 'J\'allais'),
+      QuizOption(id: 'd', text: 'Je vais'),
+    ],
+    correctOptionId: 'b',
+  ),
+  QuizQuestion(
+    number: 6,
+    prompt: 'Que signifie "néanmoins" ?',
+    options: [
+      QuizOption(id: 'a', text: 'Jamais'),
+      QuizOption(id: 'b', text: 'Toujours'),
+      QuizOption(id: 'c', text: 'Cependant'),
+      QuizOption(id: 'd', text: 'Ensuite'),
+    ],
+    correctOptionId: 'c',
+  ),
+  QuizQuestion(
+    number: 7,
+    prompt: 'Complétez : "Elle ___ (se lever) tôt chaque matin."',
+    options: [
+      QuizOption(id: 'a', text: 'se lève'),
+      QuizOption(id: 'b', text: 'se lever'),
+      QuizOption(id: 'c', text: 'lève'),
+      QuizOption(id: 'd', text: 'se levons'),
+    ],
+    correctOptionId: 'a',
+  ),
+  QuizQuestion(
+    number: 8,
+    prompt: 'Comment dit-on "environment" en français ?',
+    options: [
+      QuizOption(id: 'a', text: 'L\'environnement'),
+      QuizOption(id: 'b', text: 'L\'entourage'),
+      QuizOption(id: 'c', text: 'L\'enveloppe'),
+      QuizOption(id: 'd', text: 'L\'envoi'),
+    ],
+    correctOptionId: 'a',
+  ),
+  QuizQuestion(
+    number: 9,
+    prompt: 'Quel mot signifie "however" en français ?',
+    options: [
+      QuizOption(id: 'a', text: 'Pourtant'),
+      QuizOption(id: 'b', text: 'Parce que'),
+      QuizOption(id: 'c', text: 'Puis'),
+      QuizOption(id: 'd', text: 'Pour'),
+    ],
+    correctOptionId: 'a',
+  ),
+  QuizQuestion(
+    number: 10,
+    prompt: 'Complétez : "Nous ___ (devoir) étudier pour l\'examen."',
+    options: [
+      QuizOption(id: 'a', text: 'devions'),
+      QuizOption(id: 'b', text: 'devons'),
+      QuizOption(id: 'c', text: 'doivent'),
+      QuizOption(id: 'd', text: 'dois'),
+    ],
+    correctOptionId: 'b',
+  ),
+];
+
 class QuizProvider extends ChangeNotifier {
   final AttemptRepository? attemptRepository;
   final Future<void> Function()? onAttemptCompleted;
@@ -78,119 +223,7 @@ class QuizProvider extends ChangeNotifier {
 
   void startQuiz(String knowledgeBaseId) {
     _clearPersistenceState();
-    final questions = [
-      QuizQuestion(
-        number: 1,
-        prompt: 'Quel est le synonyme de "quotidien" ?',
-        options: [
-          QuizOption(id: 'a', text: 'Rare'),
-          QuizOption(id: 'b', text: 'Journalier'),
-          QuizOption(id: 'c', text: 'Ancien'),
-          QuizOption(id: 'd', text: 'Nouveau'),
-        ],
-        correctOptionId: 'b',
-      ),
-      QuizQuestion(
-        number: 2,
-        prompt: 'Comment dit-on "to remember" en français ?',
-        options: [
-          QuizOption(id: 'a', text: 'Oublier'),
-          QuizOption(id: 'b', text: 'Se souvenir'),
-          QuizOption(id: 'c', text: 'Perdre'),
-          QuizOption(id: 'd', text: 'Chercher'),
-        ],
-        correctOptionId: 'b',
-      ),
-      QuizQuestion(
-        number: 3,
-        prompt: 'Complétez : "Il fait ___ aujourd\'hui." (It\'s nice weather)',
-        options: [
-          QuizOption(id: 'a', text: 'froid'),
-          QuizOption(id: 'b', text: 'beau'),
-          QuizOption(id: 'c', text: 'nuit'),
-          QuizOption(id: 'd', text: 'mal'),
-        ],
-        correctOptionId: 'b',
-      ),
-      QuizQuestion(
-        number: 4,
-        prompt:
-            'Dans le contexte de l\'article sur le changement climatique, que signifie l\'expression "passer au crible" ?',
-        options: [
-          QuizOption(id: 'a', text: 'Ignorer complètement un problème.'),
-          QuizOption(id: 'b', text: 'Examiner minutieusement et en détail.'),
-          QuizOption(id: 'c', text: 'Transmettre une information rapidement.'),
-          QuizOption(id: 'd', text: 'Trier des déchets recyclables.'),
-        ],
-        correctOptionId: 'b',
-      ),
-      QuizQuestion(
-        number: 5,
-        prompt: 'Quel est le passé composé de "aller" avec "je" ?',
-        options: [
-          QuizOption(id: 'a', text: 'J\'ai allé'),
-          QuizOption(id: 'b', text: 'Je suis allé'),
-          QuizOption(id: 'c', text: 'J\'allais'),
-          QuizOption(id: 'd', text: 'Je vais'),
-        ],
-        correctOptionId: 'b',
-      ),
-      QuizQuestion(
-        number: 6,
-        prompt: 'Que signifie "néanmoins" ?',
-        options: [
-          QuizOption(id: 'a', text: 'Jamais'),
-          QuizOption(id: 'b', text: 'Toujours'),
-          QuizOption(id: 'c', text: 'Cependant'),
-          QuizOption(id: 'd', text: 'Ensuite'),
-        ],
-        correctOptionId: 'c',
-      ),
-      QuizQuestion(
-        number: 7,
-        prompt: 'Complétez : "Elle ___ (se lever) tôt chaque matin."',
-        options: [
-          QuizOption(id: 'a', text: 'se lève'),
-          QuizOption(id: 'b', text: 'se lever'),
-          QuizOption(id: 'c', text: 'lève'),
-          QuizOption(id: 'd', text: 'se levons'),
-        ],
-        correctOptionId: 'a',
-      ),
-      QuizQuestion(
-        number: 8,
-        prompt: 'Comment dit-on "environment" en français ?',
-        options: [
-          QuizOption(id: 'a', text: 'L\'environnement'),
-          QuizOption(id: 'b', text: 'L\'entourage'),
-          QuizOption(id: 'c', text: 'L\'enveloppe'),
-          QuizOption(id: 'd', text: 'L\'envoi'),
-        ],
-        correctOptionId: 'a',
-      ),
-      QuizQuestion(
-        number: 9,
-        prompt: 'Quel mot signifie "however" en français ?',
-        options: [
-          QuizOption(id: 'a', text: 'Pourtant'),
-          QuizOption(id: 'b', text: 'Parce que'),
-          QuizOption(id: 'c', text: 'Puis'),
-          QuizOption(id: 'd', text: 'Pour'),
-        ],
-        correctOptionId: 'a',
-      ),
-      QuizQuestion(
-        number: 10,
-        prompt: 'Complétez : "Nous ___ (devoir) étudier pour l\'examen."',
-        options: [
-          QuizOption(id: 'a', text: 'devions'),
-          QuizOption(id: 'b', text: 'devons'),
-          QuizOption(id: 'c', text: 'doivent'),
-          QuizOption(id: 'd', text: 'dois'),
-        ],
-        correctOptionId: 'b',
-      ),
-    ];
+    final questions = _offlineDemoQuestions();
 
     _currentQuiz = Quiz(
       id: 'quiz_${DateTime.now().millisecondsSinceEpoch}',

@@ -5,7 +5,10 @@ import '../state/quiz_provider.dart';
 import 'active_testing_screen.dart';
 import '../features/learning/presentation/screens/manual_quiz_editor_screen.dart';
 import '../features/learning/domain/entities/learning_entities.dart';
+import '../features/learning/domain/repositories/source_document_repository.dart';
 import '../features/learning/presentation/state/learner_settings_provider.dart';
+import '../features/learning/presentation/state/saved_quiz_provider.dart';
+import '../features/learning/presentation/state/source_document_provider.dart';
 import '../features/quiz_generation/presentation/state/quiz_generation_provider.dart';
 import '../features/source_ingestion/data/android_pdf_source_picker.dart';
 import '../features/source_ingestion/domain/pdf_source_picker.dart';
@@ -237,43 +240,69 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
       ),
     );
     if (confirmed == true && mounted) {
-      await _generateAndReview();
+      await _generateSaveAndStart();
     }
   }
 
-  Future<void> _generateAndReview() async {
+  Future<void> _generateSaveAndStart() async {
     final generation = context.read<QuizGenerationProvider>();
     final generated = await generation.generate();
     if (!generated || !mounted) return;
+    await _saveAndStartGeneratedQuiz();
+  }
 
-    final result = await Navigator.push<Object?>(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ManualQuizEditorScreen(
-          draftQuiz: generation.draftQuiz,
-          sourceDocument: generation.sourceDocument,
-        ),
-      ),
-    );
-    if (!mounted) return;
-    if (result == QuizEditorAction.regenerate) {
-      await _generateAndReview();
-      return;
-    }
-    if (result is QuizDefinition) {
+  Future<void> _saveAndStartGeneratedQuiz() async {
+    final generation = context.read<QuizGenerationProvider>();
+    final draft = generation.draftQuiz;
+    final source = generation.sourceDocument;
+    if (draft == null || source == null) return;
+    final sourceRepository = context.read<SourceDocumentRepository>();
+    final savedQuizProvider = context.read<SavedQuizProvider>();
+    final sourceDocumentProvider = context.read<SourceDocumentProvider>();
+    final quizProvider = context.read<QuizProvider>();
+    final navigator = Navigator.of(context);
+    generation.markSaving();
+    try {
+      final duplicate = await sourceRepository.findDuplicate(source);
+      final effectiveSource = duplicate ?? source;
+      if (duplicate == null) await sourceRepository.save(source);
+      final quiz = draft.sourceDocumentId == effectiveSource.id
+          ? draft
+          : draft.copyWith(sourceDocumentId: effectiveSource.id);
+      final saved = await savedQuizProvider.save(quiz);
+      if (!saved) throw StateError('Quiz save failed.');
+      if (!mounted) return;
+      await sourceDocumentProvider.load();
       generation.markSaved();
-      context.read<QuizProvider>().startSavedQuiz(result);
-      await Navigator.push(
-        context,
+      quizProvider.startSavedQuiz(quiz);
+      await navigator.push(
         MaterialPageRoute(builder: (context) => const ActiveTestingScreen()),
       );
       if (mounted) generation.reset();
+    } catch (_) {
+      if (!mounted) return;
+      generation.markSaveFailed();
     }
   }
 
-  void _startDemoQuiz() {
-    context.read<QuizProvider>().startQuiz('demo');
-    Navigator.push(
+  Future<void> _startDemoQuiz() async {
+    final savedQuizzes = context.read<SavedQuizProvider>();
+    final existing = savedQuizzes.quizzes
+        .where((quiz) => quiz.id == offlineDemoQuizId)
+        .firstOrNull;
+    final demo = buildOfflineDemoQuiz(createdAt: existing?.createdAt);
+    final saved = await savedQuizzes.save(demo);
+    if (!mounted) return;
+    if (!saved) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('The offline practice quiz could not be saved.'),
+        ),
+      );
+      return;
+    }
+    context.read<QuizProvider>().startSavedQuiz(demo);
+    await Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const ActiveTestingScreen()),
     );
@@ -1104,7 +1133,9 @@ class _UploadContentScreenState extends State<UploadContentScreen> {
                                   TextButton(
                                     onPressed: generation.isBusy
                                         ? null
-                                        : _generateAndReview,
+                                        : generation.errorCode == 'save_failed'
+                                        ? _saveAndStartGeneratedQuiz
+                                        : _generateSaveAndStart,
                                     child: Text(
                                       generation.errorCode ==
                                               'response_interrupted'

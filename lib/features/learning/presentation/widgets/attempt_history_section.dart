@@ -74,15 +74,18 @@ class AttemptHistorySection extends StatelessWidget {
               ),
             ],
           ),
+          const SizedBox(height: 6),
+          const Text(
+            'Every completed attempt counts toward today’s goal, including retakes.',
+            style: TextStyle(fontSize: 12, color: AppColors.onSurfaceVariant),
+          ),
           const SizedBox(height: 12),
-          ...history.entries
-              .take(5)
-              .map(
-                (entry) => Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: _AttemptCard(entry: entry),
-                ),
-              ),
+          ...history.visibleRecentEntries.map(
+            (entry) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _AttemptCard(entry: entry),
+            ),
+          ),
         ],
       ],
     );

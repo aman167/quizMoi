@@ -284,6 +284,20 @@ class DashboardScreen extends StatelessWidget {
                               ),
                             ),
                           ),
+                          if (questionsToday > dailyGoal) ...[
+                            const SizedBox(height: 4),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: Text(
+                                'Goal reached • ${questionsToday - dailyGoal} extra questions from completed attempts',
+                                textAlign: TextAlign.right,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),
