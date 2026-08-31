@@ -16,7 +16,7 @@ The repository currently contains a persistent local learning core with:
 - a Python FastAPI generation backend with a versioned structured contract;
 - Android, iOS, web, and Windows platform scaffolding.
 
-The remaining offline demo quiz is explicitly separate from generated and saved learning data. Phase 4's PDF and web-article checkpoints have passed real OpenAI emulator journeys. Camera capture, typed answers, interactive generation settings, source management, personalized review, and opt-in notification permission are implemented for the final Phase 4 Android acceptance pass. Generated-answer position bias has an implemented fix awaiting emulator verification as `QM-005`. See [DEFECT_LOG.md](DEFECT_LOG.md) and [DEVELOPMENT_ROADMAP.md](DEVELOPMENT_ROADMAP.md).
+Phase 4 is complete: text, PDF, camera, and supported URL sources can generate persistent quizzes; multiple-choice and typed-answer sessions, source management, personalized review, and opt-in notification permission are implemented. The project is now in Phase 5 private self-use alpha. Follow [PHASE_5_ALPHA_PLAN.md](PHASE_5_ALPHA_PLAN.md), with findings tracked in [DEFECT_LOG.md](DEFECT_LOG.md) and progress in [DEVELOPMENT_ROADMAP.md](DEVELOPMENT_ROADMAP.md).
 
 The intended learner experience and current demo boundaries are defined in [PRODUCT_SPEC.md](PRODUCT_SPEC.md).
 Issues found during emulator and self-use testing are tracked in [DEFECT_LOG.md](DEFECT_LOG.md).
