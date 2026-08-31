@@ -29,7 +29,7 @@ Use a clean Android installation and preserve its data between test cases.
 
 ### Core generation journeys
 
-- [ ] Pasted text: preview, generate, auto-save, complete, results, restart.
+- [x] Pasted text: preview, generate, auto-save, complete, results, restart.
 - [ ] PDF: select, preview, generate, complete, restart.
 - [ ] Public URL: retrieve, preview cleaned text, generate, complete, restart.
 - [ ] Camera: permission on demand, capture/retake, preview, generate, complete.
@@ -37,20 +37,25 @@ Use a clean Android installation and preserve its data between test cases.
 
 ### Quiz breadth
 
-- [ ] Multiple-choice scoring and explanations.
-- [ ] Typed-answer normalization, accepted alternatives, and accents.
-- [ ] Five-, ten-, and fifteen-question generation.
-- [ ] Easy, medium, and hard difficulty settings.
-- [ ] Optional time limit and timeout submission.
-- [ ] Previous, skip, review, pause/resume, restart, exit, and retake.
+- [x] Multiple-choice scoring and explanations.
+- [x] Typed-answer input, timeout scoring, and accent-sensitive behavior.
+- [ ] Typed-answer case/whitespace/punctuation normalization and accepted alternatives.
+- [x] Five- and ten-question generation.
+- [ ] Fifteen-question generation.
+- [x] Easy and medium difficulty settings.
+- [ ] Hard difficulty setting.
+- [x] Optional time limit and timeout submission.
+- [x] Previous, skip, answer review, pause, resume, and question-status restoration.
+- [ ] Confirmed restart, discard, and completed-quiz retake.
 
 ### Local learning data
 
 - [ ] Saved quiz edit, duplicate, archive, restore, and delete.
 - [ ] Knowledge-base create, assignment, archive, and safe deletion.
-- [ ] Source duplicate detection and deletion without losing quizzes.
-- [ ] Dashboard accuracy, daily goal, streak, history, and recommendations.
-- [ ] Force-stop/reopen restores saved data and an in-progress attempt.
+- [x] Source duplicate detection reuses one source across generated quizzes.
+- [ ] Source deletion preserves linked quizzes and attempts.
+- [x] Dashboard accuracy, daily goal, streak, history, and recommendations.
+- [x] Force-stop/reopen and APK upgrade restore saved, completed, and in-progress data.
 
 ### Failure behavior
 
@@ -89,3 +94,7 @@ Use a clean Android installation and preserve its data between test cases.
 ## Test-session notes
 
 For each session, record the date, device, app commit, sources tested, result, and related defect IDs. Never paste private source content or API keys into this file.
+
+- 2026-08-31 — Android 17 emulator, commit `39ad237`: real pasted-text/OpenAI quiz **La routine de Marie** generated ten MCQs, auto-saved without answer leakage, completed with matching score, showed explanations only after submission, and survived force-stop/reopen. Dashboard restored 40.7% aggregate accuracy, 10/10 questions today, a one-day streak, recommendations, and the named 0/10 attempt in Recent Attempts. No new defect reported.
+- 2026-08-31 — Android 17 emulator, commit `39ad237`: repeated the Marie source with five easy typed-answer questions and a five-minute limit. Timeout submitted at exactly 5:00 with two correct and three wrong/skipped; feedback remained grounded and correctly treated `pres` as different from `près`. SQLite inspection confirmed **La routine de Marie** and **La vie de Marie** share one source-document ID. No new defect reported.
+- 2026-08-31 — Android 17 emulator, Phase 5 branch: generated 15 hard alternating MCQ/typed questions from the French PDF and verified skip, answer-status review, and jump-back navigation. Testing found QM-006: pause/restart controls were clipped. The responsive fix was installed as an APK upgrade without clearing data; the attempt restored at Question 3 with 1/15 answered, displayed **Pause & Exit**, and returned safely to a resumable dashboard card.

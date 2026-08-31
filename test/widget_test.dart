@@ -227,7 +227,9 @@ void main() {
     final provider = QuizProvider()..startQuiz('test');
     await tester.pumpWidget(_testApp(provider, const ActiveTestingScreen()));
 
-    await tester.tap(find.byTooltip('Restart Quiz'));
+    await tester.tap(find.byTooltip('Quiz actions'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Restart Quiz'));
     await tester.pumpAndSettle();
 
     expect(find.text('Restart this quiz?'), findsOneWidget);
@@ -243,7 +245,9 @@ void main() {
     final provider = QuizProvider()..startQuiz('test');
     await tester.pumpWidget(_testApp(provider, const ActiveTestingScreen()));
 
-    await tester.tap(find.text('Back to Dashboard'));
+    await tester.tap(find.byTooltip('Quiz actions'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Discard Attempt'));
     await tester.pumpAndSettle();
 
     expect(find.text('Leave this quiz?'), findsOneWidget);
@@ -316,6 +320,8 @@ void main() {
     await tester.pump();
 
     expect(tester.takeException(), isNull);
+    expect(find.text('Pause'), findsOneWidget);
+    expect(find.byTooltip('Quiz actions'), findsOneWidget);
     expect(find.text('0 of 10 answered'), findsOneWidget);
     expect(find.text('Previous'), findsOneWidget);
     expect(find.text('Next'), findsOneWidget);
