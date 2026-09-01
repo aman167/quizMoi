@@ -60,9 +60,9 @@ Use a clean Android installation and preserve its data between test cases.
 ### Failure behavior
 
 - [ ] Empty, short, unsupported, oversized, and non-French input.
-- [ ] Backend unavailable before generation.
-- [ ] Interrupted response and result recovery.
-- [ ] Save failure preserves the generated draft for retry.
+- [x] Backend unavailable before generation.
+- [x] Interrupted response and result recovery.
+- [x] Save failure preserves the generated draft for retry.
 - [ ] Camera and notification permission denial/retry.
 
 ## Checkpoint 5.3 — Physical Android phone
@@ -106,3 +106,4 @@ For each session, record the date, device, app commit, sources tested, result, a
 - 2026-08-31 — Android 17 emulator, Phase 5 branch: edited and saved the temporary Scoring Test quiz, duplicated it, archived and restored the original, deleted both copies through their confirmation dialogs, restarted the app, and confirmed neither deleted quiz returned. No new defect reported.
 - 2026-08-31 — Android 17 emulator, Phase 5 branch: created a knowledge base, assigned a saved quiz, archived and restored the folder, deleted it through the safety confirmation, and confirmed the assigned quiz remained available. No new defect reported.
 - 2026-08-31 — Android 17 emulator, Phase 5 branch: deleted the stored source for a generated quiz, confirmed the saved quiz and previous attempt remained available, retook the quiz successfully, and verified its scoring and feedback still worked. No new defect reported.
+- 2026-08-31 — Android 17 emulator and automated recovery suite, Phase 5 branch: manually verified that empty and short pasted text are rejected with the 200-character validation message before generation. Ran 34 focused Flutter tests and all 19 backend tests, covering backend-unavailable retry with preserved requests, interrupted-response recovery using the same request ID, stable backend errors, invalid source/PDF handling, and save retry without another AI request. All tests passed; unsupported/oversized/non-French manual coverage and permission denial remain pending.
