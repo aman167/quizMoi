@@ -67,9 +67,9 @@ Use a clean Android installation and preserve its data between test cases.
 
 ## Checkpoint 5.3 — Physical Android phone
 
-- [ ] Enable developer options and USB debugging.
-- [ ] Install the private debug APK over USB.
-- [ ] Configure a development API address reachable on private Wi-Fi.
+- [x] Enable developer options and USB debugging.
+- [x] Install the private debug APK over USB.
+- [x] Configure a development API address reachable from the phone (USB `adb reverse` tunnel used for the first physical-device test).
 - [ ] Verify text, PDF, camera, keyboard, notification, and restart behavior.
 - [ ] Confirm the phone contains no OpenAI credential.
 
